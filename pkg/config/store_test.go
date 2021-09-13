@@ -123,6 +123,7 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				Service: ServiceConfig{Port: 9000},
 			},
 		},
 		{
@@ -150,6 +151,7 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				Service: ServiceConfig{Port: 9000},
 			},
 		},
 		{
@@ -341,6 +343,7 @@ func TestParse(t *testing.T) {
 					VerifyAnnotation: true,
 					URL:              "https://rekor.sigstore.dev",
 				},
+				Service: ServiceConfig{Port: 9000},
 			},
 		},
 		{
@@ -368,6 +371,7 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				Service: ServiceConfig{Port: 9000},
 			},
 		}, {
 			name: "fulcio",
@@ -403,6 +407,7 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				Service: ServiceConfig{Port: 9000},
 			},
 		}, {
 			name: "rekor - true",

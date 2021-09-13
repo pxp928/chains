@@ -10,6 +10,8 @@ require (
 	github.com/armon/go-metrics v0.3.10
 	github.com/armon/go-radix v1.0.0
 	github.com/ghodss/yaml v1.0.0
+	github.com/go-openapi/runtime v0.19.30 // indirect
+	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4
 	github.com/golangci/golangci-lint v1.44.0
 	github.com/google/addlicense v1.0.0
@@ -17,6 +19,7 @@ require (
 	github.com/google/go-containerregistry v0.8.1-0.20220202214207-9c35968ef47e
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20220125170349-50dfc2733d10
 	github.com/google/go-licenses v0.0.0-20210816172045-3099c18c36e1
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-immutable-radix v1.3.1
