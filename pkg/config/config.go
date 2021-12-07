@@ -131,10 +131,10 @@ const (
 )
 
 func (artifact *Artifact) Enabled() bool {
-	if artifact.StorageBackend.Len() > 0 {
-		return true
-	} else {
+	if artifact.StorageBackend.Has("") {
 		return false
+	} else {
+		return true
 	}
 }
 
@@ -272,12 +272,14 @@ func asStringSet(key string, target *sets.String, values ...string) cm.ParseFunc
 	return func(data map[string]string) error {
 		if raw, ok := data[key]; ok {
 			splitted := strings.Split(raw, ",")
-			if len(values) > 0 {
-				vals := sets.NewString(values...)
-				for i, v := range splitted {
-					splitted[i] = strings.TrimSpace(v)
-					if !vals.Has(splitted[i]) {
-						return fmt.Errorf("invalid value %q wanted one of %v", splitted[i], vals.List())
+			if raw != "" {
+				if len(values) > 0 {
+					vals := sets.NewString(values...)
+					for i, v := range splitted {
+						splitted[i] = strings.TrimSpace(v)
+						if !vals.Has(splitted[i]) {
+							return fmt.Errorf("invalid value %q wanted one of %v", splitted[i], vals.List())
+						}
 					}
 				}
 			}
