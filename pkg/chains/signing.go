@@ -195,26 +195,42 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) e
 				continue
 			}
 
-			// Now store those!
-			b := allBackends[signableType.StorageBackend(cfg)]
-			storageOpts := config.StorageOpts{
-				Key:           signableType.Key(obj),
-				Cert:          signer.Cert(),
-				Chain:         signer.Chain(),
-				PayloadFormat: payloadFormat,
-			}
-			if err := b.StorePayload(rawPayload, string(signature), storageOpts); err != nil {
-				logger.Error(err)
-				merr = multierror.Append(merr, err)
-			}
+				logger.Infof("Signing object with %s", signerType)
+				rawPayload, err := json.Marshal(payload)
+				if err != nil {
+					logger.Warnf("Unable to marshal payload: %v", signerType, obj)
+					continue
+				}
 
 			if shouldUploadTlog(cfg, tr) {
 				entry, err := rekorClient.UploadTlog(ctx, signer, signature, rawPayload, signer.Cert(), string(payloadFormat))
 				if err != nil {
 					logger.Error(err)
-					merr = multierror.Append(merr, err)
-				} else {
-					logger.Infof("Uploaded entry to %s with index %d", cfg.Transparency.URL, *entry.LogIndex)
+					continue
+				}
+
+				// Now store those!
+				for _, backend := range signableType.StorageBackend(cfg).List() {
+					b := allBackends[backend]
+					storageOpts := config.StorageOpts{
+						Key:           signableType.Key(obj),
+						Cert:          signer.Cert(),
+						Chain:         signer.Chain(),
+						PayloadFormat: payloadFormat,
+					}
+					if err := b.StorePayload(rawPayload, string(signature), storageOpts); err != nil {
+						logger.Error(err)
+						merr = multierror.Append(merr, err)
+					}
+				}
+
+				if shouldUploadTlog(cfg, tr) {
+					entry, err := rekorClient.UploadTlog(ctx, signer, signature, rawPayload, signer.Cert(), string(payloadFormat))
+					if err != nil {
+						logger.Error(err)
+						merr = multierror.Append(merr, err)
+					} else {
+						logger.Infof("Uploaded entry to %s with index %d", cfg.Transparency.URL, *entry.LogIndex)
 
 					extraAnnotations[ChainsTransparencyAnnotation] = fmt.Sprintf("%s/api/v1/log/entries?logIndex=%d", cfg.Transparency.URL, *entry.LogIndex)
 				}

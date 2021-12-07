@@ -129,6 +129,14 @@ const (
 	ChainsConfig = "chains-config"
 )
 
+func (artifact *Artifact) Enabled() bool {
+	if artifact.StorageBackend.Has("") {
+		return false
+	} else {
+		return true
+	}
+}
+
 func defaultConfig() *Config {
 	return &Config{
 		Artifacts: ArtifactConfigs{
@@ -257,3 +265,28 @@ func asString(key string, target *string, values ...string) cm.ParseFunc {
 		return nil
 	}
 }
+<<<<<<< HEAD
+=======
+
+// asStringSet parses the value at key as a sets.String (split by ',') into the target, if it exists.
+func asStringSet(key string, target *sets.String, values ...string) cm.ParseFunc {
+	return func(data map[string]string) error {
+		if raw, ok := data[key]; ok {
+			splitted := strings.Split(raw, ",")
+			if raw != "" {
+				if len(values) > 0 {
+					vals := sets.NewString(values...)
+					for i, v := range splitted {
+						splitted[i] = strings.TrimSpace(v)
+						if !vals.Has(splitted[i]) {
+							return fmt.Errorf("invalid value %q wanted one of %v", splitted[i], vals.List())
+						}
+					}
+				}
+			}
+			*target = sets.NewString(splitted...)
+		}
+		return nil
+	}
+}
+>>>>>>> 0d90e4d1 (added multi-backend support)
