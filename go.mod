@@ -10,7 +10,6 @@ require (
 	github.com/armon/go-metrics v0.3.10
 	github.com/armon/go-radix v1.0.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-openapi/runtime v0.19.30 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4
 	github.com/golangci/golangci-lint v1.44.0
@@ -49,6 +48,8 @@ require (
 	go.uber.org/zap v1.21.0
 	gocloud.dev v0.24.1-0.20211119014450-028788aaaa4c
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
+	google.golang.org/genproto v0.0.0-20220222154240-daf995802d7b
+	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.22.5
 	k8s.io/apimachinery v0.22.5
