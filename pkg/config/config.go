@@ -31,8 +31,8 @@ type Config struct {
 	Storage      StorageConfigs
 	Signers      SignerConfigs
 	Builder      BuilderConfig
-	Service      ServiceConfig
 	Transparency TransparencyConfig
+	SPIRE        SPIREConfig
 }
 
 // ArtifactConfig contains the configuration for how to sign/store/format the signatures for each artifact type
@@ -66,6 +66,11 @@ type BuilderConfig struct {
 	ID string
 }
 
+type SPIREConfig struct {
+	Enabled    bool
+	SocketPath string
+}
+
 type X509Signer struct {
 	FulcioEnabled bool
 	FulcioAddr    string
@@ -95,11 +100,6 @@ type TransparencyConfig struct {
 	Enabled          bool
 	VerifyAnnotation bool
 	URL              string
-}
-
-type ServiceConfig struct {
-	Enabled bool
-	Port    int
 }
 
 const (
@@ -132,8 +132,9 @@ const (
 	transparencyEnabledKey = "transparency.enabled"
 	transparencyURLKey     = "transparency.url"
 
-	// Chains API Config
-	apiEnabledKey = "chains.api.enabled"
+	// SPIRE config
+	spireEnabledKey = "spire.enabled"
+	spireSocketPath = "spire.socketPath"
 
 	ChainsConfig = "chains-config"
 )
@@ -167,9 +168,9 @@ func defaultConfig() *Config {
 		Builder: BuilderConfig{
 			ID: "https://tekton.dev/chains/v2",
 		},
-		Service: ServiceConfig{
-			Port:    9000,
-			Enabled: false,
+		SPIRE: SPIREConfig{
+			Enabled:    true,
+			SocketPath: "/spiffe-workload-api/spire-agent.sock",
 		},
 	}
 }
@@ -199,6 +200,10 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		oneOf(transparencyEnabledKey, &cfg.Transparency.VerifyAnnotation, "manual"),
 		asString(transparencyURLKey, &cfg.Transparency.URL),
 
+		// Spire config
+		asBool(spireEnabledKey, &cfg.SPIRE.Enabled),
+		asString(spireSocketPath, &cfg.SPIRE.SocketPath, "/spiffe-workload-api/spire-agent.sock"),
+
 		asString(kmsSignerKMSRef, &cfg.Signers.KMS.KMSRef),
 
 		asBool(x509SignerFulcioEnabled, &cfg.Signers.X509.FulcioEnabled),
@@ -206,9 +211,6 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 
 		// Build config
 		asString(builderIDKey, &cfg.Builder.ID),
-
-		// Service config
-		asBool(apiEnabledKey, &cfg.Service.Enabled),
 	); err != nil {
 		return nil, fmt.Errorf("failed to parse data: %w", err)
 	}

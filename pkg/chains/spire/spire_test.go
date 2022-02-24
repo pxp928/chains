@@ -22,6 +22,7 @@ import (
 )
 
 func TestVerify(t *testing.T) {
+	spireWorkloadAPI := NewSpireWorkloadApiClient("")
 	tr := &v1beta1.TaskRun{
 		Status: v1beta1.TaskRunStatus{
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
@@ -35,7 +36,7 @@ func TestVerify(t *testing.T) {
 		},
 	}
 	logger := logtesting.TestLogger(t)
-	if err := Verify(tr, logger); err == nil {
+	if err := spireWorkloadAPI.Verify(tr, logger); err == nil {
 		t.Fatal("no results to verify, this should fail")
 	}
 
@@ -49,7 +50,7 @@ func TestVerify(t *testing.T) {
 		},
 	}
 	tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, digestTaskRunResults...)
-	if err := Verify(tr, logger); err != nil {
+	if err := spireWorkloadAPI.Verify(tr, logger); err != nil {
 		t.Fatal(err)
 	}
 }

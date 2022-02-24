@@ -17,6 +17,7 @@ limitations under the License.
 package provenance
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"github.com/tektoncd/chains/pkg/artifacts"
 	"github.com/tektoncd/chains/pkg/chains/formats"
 	"github.com/tektoncd/chains/pkg/chains/provenance"
+	"github.com/tektoncd/chains/pkg/chains/spire"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -44,8 +46,11 @@ const (
 )
 
 type Provenance struct {
-	builderID string
-	logger    *zap.SugaredLogger
+	builderID        string
+	logger           *zap.SugaredLogger
+	spireEnabled     bool
+	spireSocket      string
+	spireWorkloadAPI *spire.SpireWorkloadApiClient
 }
 
 func NewFormatter(cfg config.Config, logger *zap.SugaredLogger) (formats.Payloader, error) {
@@ -56,8 +61,10 @@ func NewFormatter(cfg config.Config, logger *zap.SugaredLogger) (formats.Payload
 	kubectl patch configmap chains-config -n tekton-chains -p='{"data":{"artifacts.taskrun.format": "in-toto"}}'	
 	`
 	return &Provenance{
-		builderID: cfg.Builder.ID,
-		logger:    logger,
+		builderID:    cfg.Builder.ID,
+		logger:       logger,
+		spireEnabled: cfg.SPIRE.Enabled,
+		spireSocket:  cfg.SPIRE.SocketPath,
 	}, errors.New(errorMsg)
 }
 
@@ -70,6 +77,14 @@ func (i *Provenance) CreatePayload(obj interface{}) (interface{}, error) {
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
 		tr = v
+		if i.spireEnabled {
+			ctx := context.Background()
+			i.spireWorkloadAPI = spire.NewSpireWorkloadApiClient(i.spireSocket)
+			i.spireWorkloadAPI.DialClient(ctx)
+			if err := i.spireWorkloadAPI.Verify(v, i.logger); err != nil {
+				return nil, errors.Wrap(err, "verifying SPIRE")
+			}
+		}
 	default:
 		return nil, fmt.Errorf("intoto does not support type: %s", v)
 	}

@@ -10,7 +10,6 @@ require (
 	github.com/armon/go-metrics v0.3.10
 	github.com/armon/go-radix v1.0.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4
 	github.com/golangci/golangci-lint v1.44.0
 	github.com/google/addlicense v1.0.0
@@ -18,7 +17,6 @@ require (
 	github.com/google/go-containerregistry v0.8.1-0.20220202214207-9c35968ef47e
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20220125170349-50dfc2733d10
 	github.com/google/go-licenses v0.0.0-20210816172045-3099c18c36e1
-	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-immutable-radix v1.3.1
@@ -42,14 +40,13 @@ require (
 	github.com/sigstore/cosign v1.5.2-0.20220210140103-2381756282ae
 	github.com/sigstore/rekor v0.4.1-0.20220114213500-23f583409af3
 	github.com/sigstore/sigstore v1.1.1-0.20220217211516-72dc5d11a806
+	github.com/spiffe/go-spiffe/v2 v2.0.0-beta.11
 	github.com/tektoncd/pipeline v0.31.1-0.20220105002759-3e137645be61
 	github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
 	go.uber.org/atomic v1.9.0
 	go.uber.org/zap v1.21.0
 	gocloud.dev v0.24.1-0.20211119014450-028788aaaa4c
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
-	google.golang.org/genproto v0.0.0-20220222154240-daf995802d7b
-	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.22.5
 	k8s.io/apimachinery v0.22.5
