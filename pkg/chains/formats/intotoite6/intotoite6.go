@@ -73,7 +73,7 @@ func (i *InTotoIte6) CreatePayload(obj interface{}) (interface{}, error) {
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
 		tr = v
-		if i.spireEnabled {
+		if i.spireEnabled && len(tr.Status.TaskRunResults) > 0 {
 			ctx := context.Background()
 			i.spireWorkloadAPI = spire.NewSpireWorkloadApiClient(i.spireSocket)
 			i.spireWorkloadAPI.DialClient(ctx)

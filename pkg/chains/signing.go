@@ -163,6 +163,7 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) e
 			payload, err := payloader.CreatePayload(obj)
 			if err != nil {
 				logger.Error(err)
+				merr = multierror.Append(merr, err)
 				continue
 			}
 			logger.Infof("Created payload of type %s for TaskRun %s/%s", string(payloadFormat), tr.Namespace, tr.Name)

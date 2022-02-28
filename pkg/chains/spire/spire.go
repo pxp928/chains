@@ -27,7 +27,6 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
@@ -42,12 +41,9 @@ const (
 type SpireWorkloadApiClient struct {
 	socketPath string
 	client     *workloadapi.Client
-	SVID       *x509svid.SVID
-	ctx        context.Context
 }
 
 func (w *SpireWorkloadApiClient) DialClient(ctx context.Context) (*workloadapi.Client, error) {
-	w.ctx = ctx
 	if w.client != nil {
 		return w.client, nil
 	}
@@ -67,18 +63,6 @@ func NewSpireWorkloadApiClient(socket string) *SpireWorkloadApiClient {
 	return &SpireWorkloadApiClient{
 		socketPath: socket,
 	}
-}
-
-func (w *SpireWorkloadApiClient) fetchSVID() (*x509svid.SVID, error) {
-	if w.SVID != nil {
-		return w.SVID, nil
-	}
-	xsvid, err := w.client.FetchX509SVID(w.ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch controller SVID: %s", err)
-	}
-	w.SVID = xsvid
-	return w.SVID, nil
 }
 
 func getTrustBundle(client *workloadapi.Client, ctx context.Context) (*x509.CertPool, error) {
@@ -103,7 +87,7 @@ func (w *SpireWorkloadApiClient) Verify(tr *v1beta1.TaskRun, logger *zap.Sugared
 	annotations := tr.Annotations
 
 	// get trust bundle from spire server
-	trust, err := getTrustBundle(w.client, w.ctx)
+	trust, err := getTrustBundle(w.client, context.Background())
 	if err != nil {
 		return err
 	}
@@ -136,7 +120,6 @@ func (w *SpireWorkloadApiClient) Verify(tr *v1beta1.TaskRun, logger *zap.Sugared
 	}
 	logger.Info("Successfully verified status annotation hash matches the current taskrun status")
 
-	logger.Info("Successfully verified all annotations against SPIRE")
 	return nil
 }
 
