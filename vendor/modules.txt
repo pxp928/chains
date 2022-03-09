@@ -489,7 +489,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-containerregistry v0.8.1-0.20220202214207-9c35968ef47e
+# github.com/google/go-containerregistry v0.8.1-0.20220211173031-41f8d92709b7
 ## explicit
 github.com/google/go-containerregistry/internal/and
 github.com/google/go-containerregistry/internal/estargz
@@ -998,9 +998,13 @@ github.com/spiffe/go-spiffe/v2/internal/x509util
 github.com/spiffe/go-spiffe/v2/logger
 github.com/spiffe/go-spiffe/v2/proto/spiffe/workload
 github.com/spiffe/go-spiffe/v2/spiffeid
+github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig
 github.com/spiffe/go-spiffe/v2/svid/jwtsvid
 github.com/spiffe/go-spiffe/v2/svid/x509svid
 github.com/spiffe/go-spiffe/v2/workloadapi
+# github.com/spiffe/spire-api-sdk v1.2.0
+github.com/spiffe/spire-api-sdk/proto/spire/api/server/entry/v1
+github.com/spiffe/spire-api-sdk/proto/spire/api/types
 # github.com/src-d/gcfg v1.4.0
 github.com/src-d/gcfg
 github.com/src-d/gcfg/scanner
@@ -1032,7 +1036,7 @@ github.com/syndtr/goleveldb/leveldb/table
 github.com/syndtr/goleveldb/leveldb/util
 # github.com/tdakkota/asciicheck v0.1.1
 github.com/tdakkota/asciicheck
-# github.com/tektoncd/pipeline v0.31.1-0.20220105002759-3e137645be61
+# github.com/tektoncd/pipeline v0.31.1-0.20220105002759-3e137645be61 => ../pipeline
 ## explicit
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
@@ -1063,9 +1067,12 @@ github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/tas
 github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun
 github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1
+github.com/tektoncd/pipeline/pkg/clock
 github.com/tektoncd/pipeline/pkg/list
 github.com/tektoncd/pipeline/pkg/names
 github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
+github.com/tektoncd/pipeline/pkg/spire
+github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
 # github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
 ## explicit
@@ -1975,7 +1982,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20220121092305-3ba5d72e310a
+# knative.dev/pkg v0.0.0-20220131144930-f4b57aef0006
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

@@ -17,7 +17,6 @@ limitations under the License.
 package intotoite6
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -25,14 +24,16 @@ import (
 	"github.com/in-toto/in-toto-golang/in_toto"
 	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
 	"github.com/pkg/errors"
+	"knative.dev/pkg/apis"
 
 	intoto "github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/tektoncd/chains/pkg/artifacts"
 	"github.com/tektoncd/chains/pkg/chains/formats"
-	"github.com/tektoncd/chains/pkg/chains/spire"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/spire"
+	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -48,11 +49,10 @@ const (
 )
 
 type InTotoIte6 struct {
-	builderID        string
-	logger           *zap.SugaredLogger
-	spireEnabled     bool
-	spireSocket      string
-	spireWorkloadAPI *spire.SpireWorkloadApiClient
+	builderID          string
+	logger             *zap.SugaredLogger
+	spireEnabled       bool
+	spireControllerAPI *spire.SpireControllerApiClient
 }
 
 func NewFormatter(cfg config.Config, logger *zap.SugaredLogger) (formats.Payloader, error) {
@@ -60,7 +60,9 @@ func NewFormatter(cfg config.Config, logger *zap.SugaredLogger) (formats.Payload
 		builderID:    cfg.Builder.ID,
 		logger:       logger,
 		spireEnabled: cfg.SPIRE.Enabled,
-		spireSocket:  cfg.SPIRE.SocketPath,
+		spireControllerAPI: spire.NewSpireControllerApiClient(spireconfig.SpireConfig{
+			SocketPath: cfg.SPIRE.SocketPath,
+		}),
 	}, nil
 }
 
@@ -73,10 +75,11 @@ func (i *InTotoIte6) CreatePayload(obj interface{}) (interface{}, error) {
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
 		tr = v
-		if i.spireEnabled && len(tr.Status.TaskRunResults) > 0 {
-			ctx := context.Background()
-			i.spireWorkloadAPI = spire.NewSpireWorkloadApiClient(i.spireSocket)
-			if err := i.spireWorkloadAPI.Verify(ctx, tr, i.logger); err != nil {
+		if i.spireEnabled {
+			if len(tr.Status.TaskRunResults) > 0 && !tr.Status.GetCondition(apis.ConditionType("Verified")).IsTrue() {
+				return nil, errors.New("taskrun status condition not verified. Spire taskrun results verification failure")
+			}
+			if err := i.spireControllerAPI.VerifyStatusInternalAnnotation(tr, i.logger); err != nil {
 				return nil, errors.Wrap(err, "verifying SPIRE")
 			}
 		}
