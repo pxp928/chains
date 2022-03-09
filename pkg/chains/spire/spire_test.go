@@ -14,6 +14,7 @@ limitations under the License.
 package spire
 
 import (
+	"context"
 	"testing"
 
 	logtesting "knative.dev/pkg/logging/testing"
@@ -36,7 +37,8 @@ func TestVerify(t *testing.T) {
 		},
 	}
 	logger := logtesting.TestLogger(t)
-	if err := spireWorkloadAPI.Verify(tr, logger); err == nil {
+	ctx := context.Background()
+	if err := spireWorkloadAPI.Verify(ctx, tr, logger); err == nil {
 		t.Fatal("no results to verify, this should fail")
 	}
 
@@ -50,7 +52,7 @@ func TestVerify(t *testing.T) {
 		},
 	}
 	tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, digestTaskRunResults...)
-	if err := spireWorkloadAPI.Verify(tr, logger); err != nil {
+	if err := spireWorkloadAPI.Verify(ctx, tr, logger); err != nil {
 		t.Fatal(err)
 	}
 }

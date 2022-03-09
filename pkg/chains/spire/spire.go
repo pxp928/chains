@@ -30,6 +30,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
+	"knative.dev/pkg/apis"
 )
 
 const (
@@ -43,20 +44,20 @@ type SpireWorkloadApiClient struct {
 	client     *workloadapi.Client
 }
 
-func (w *SpireWorkloadApiClient) DialClient(ctx context.Context) (*workloadapi.Client, error) {
-	if w.client != nil {
-		return w.client, nil
+func (w *SpireWorkloadApiClient) checkClient(ctx context.Context) error {
+	if w.client == nil {
+		return w.dial(ctx)
 	}
-	return w.dial(ctx)
+	return nil
 }
 
-func (w *SpireWorkloadApiClient) dial(ctx context.Context) (*workloadapi.Client, error) {
+func (w *SpireWorkloadApiClient) dial(ctx context.Context) error {
 	client, err := workloadapi.New(ctx, workloadapi.WithAddr("unix://"+w.socketPath))
 	if err != nil {
-		return nil, errors.Errorf("Spire workload API not initalized due to error: %s", err.Error())
+		return errors.Errorf("Spire workload API not initalized due to error: %w", err.Error())
 	}
 	w.client = client
-	return client, nil
+	return nil
 }
 
 func NewSpireWorkloadApiClient(socket string) *SpireWorkloadApiClient {
@@ -83,8 +84,17 @@ func getTrustBundle(client *workloadapi.Client, ctx context.Context) (*x509.Cert
 
 // Verify checks if the TaskRun has an SVID cert
 // it then verifies the provided signatures against the cert
-func (w *SpireWorkloadApiClient) Verify(tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error {
-	annotations := tr.Annotations
+func (w *SpireWorkloadApiClient) Verify(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error {
+	err := w.checkClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	annotations := tr.Status.Annotations
+	if !tr.Status.GetCondition(apis.ConditionType("Verified")).IsTrue() {
+		return errors.New("taskrun status condition not verified. Spire taskrun results verification failure")
+	}
+	logger.Info("Successfully verified Taskrun results via taskrun status condition")
 
 	// get trust bundle from spire server
 	trust, err := getTrustBundle(w.client, context.Background())
@@ -100,7 +110,7 @@ func (w *SpireWorkloadApiClient) Verify(tr *v1beta1.TaskRun, logger *zap.Sugared
 	block, _ := pem.Decode([]byte(svid))
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return fmt.Errorf("invalid SVID: %s", err)
+		return fmt.Errorf("invalid SVID: %w", err)
 	}
 
 	// verify certificate root of trust
@@ -115,7 +125,7 @@ func (w *SpireWorkloadApiClient) Verify(tr *v1beta1.TaskRun, logger *zap.Sugared
 	logger.Info("Successfully verified signature")
 
 	// check current status hash vs annotation status hash by controller
-	if err := checkStatusAnnotationHash(tr); err != nil {
+	if err := checkStatusInternalAnnotation(tr, annotations); err != nil {
 		return err
 	}
 	logger.Info("Successfully verified status annotation hash matches the current taskrun status")
@@ -130,7 +140,7 @@ func verifySignature(pub interface{}, annotations map[string]string) error {
 	}
 	b, err := base64.StdEncoding.DecodeString(signature)
 	if err != nil {
-		return fmt.Errorf("invalid signature: %s", err)
+		return fmt.Errorf("invalid signature: %w", err)
 	}
 	hash, ok := annotations[TaskRunStatusHashAnnotation]
 	if !ok {
@@ -156,22 +166,22 @@ func verifySignature(pub interface{}, annotations map[string]string) error {
 	}
 }
 
-func hashTaskrunStatus(tr *v1beta1.TaskRun) (string, error) {
-	s, err := json.Marshal(tr.Status)
+func hashTaskrunStatusInternal(tr *v1beta1.TaskRun) (string, error) {
+	s, err := json.Marshal(tr.Status.TaskRunStatusFields)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%x", sha256.Sum256(s)), nil
 }
 
-func checkStatusAnnotationHash(tr *v1beta1.TaskRun) error {
+func checkStatusInternalAnnotation(tr *v1beta1.TaskRun, annotations map[string]string) error {
 	// get stored hash of status
-	hash, ok := tr.Annotations[TaskRunStatusHashAnnotation]
+	hash, ok := annotations[TaskRunStatusHashAnnotation]
 	if !ok {
 		return fmt.Errorf("no annotation status hash found for %s", TaskRunStatusHashAnnotation)
 	}
 	// get current hash of status
-	current, err := hashTaskrunStatus(tr)
+	current, err := hashTaskrunStatusInternal(tr)
 	if err != nil {
 		return err
 	}

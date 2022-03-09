@@ -80,8 +80,7 @@ func (i *Provenance) CreatePayload(obj interface{}) (interface{}, error) {
 		if i.spireEnabled && len(tr.Status.TaskRunResults) > 0 {
 			ctx := context.Background()
 			i.spireWorkloadAPI = spire.NewSpireWorkloadApiClient(i.spireSocket)
-			i.spireWorkloadAPI.DialClient(ctx)
-			if err := i.spireWorkloadAPI.Verify(v, i.logger); err != nil {
+			if err := i.spireWorkloadAPI.Verify(ctx, v, i.logger); err != nil {
 				return nil, errors.Wrap(err, "verifying SPIRE")
 			}
 		}
