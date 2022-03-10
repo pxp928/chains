@@ -42,7 +42,6 @@ require (
 	github.com/sigstore/cosign v1.5.2-0.20220210140103-2381756282ae
 	github.com/sigstore/rekor v0.4.1-0.20220114213500-23f583409af3
 	github.com/sigstore/sigstore v1.1.1-0.20220217211516-72dc5d11a806
-	github.com/spiffe/go-spiffe/v2 v2.0.0-beta.11
 	github.com/tektoncd/pipeline v0.31.1-0.20220105002759-3e137645be61
 	github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
 	go.uber.org/atomic v1.9.0

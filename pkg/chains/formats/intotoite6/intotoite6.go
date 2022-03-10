@@ -17,14 +17,13 @@ limitations under the License.
 package intotoite6
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
-	"github.com/pkg/errors"
-	"knative.dev/pkg/apis"
 
 	intoto "github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/tektoncd/chains/pkg/artifacts"
@@ -70,17 +69,14 @@ func (i *InTotoIte6) Wrap() bool {
 	return true
 }
 
-func (i *InTotoIte6) CreatePayload(obj interface{}) (interface{}, error) {
+func (i *InTotoIte6) CreatePayload(ctx context.Context, obj interface{}) (interface{}, error) {
 	var tr *v1beta1.TaskRun
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
 		tr = v
 		if i.spireEnabled {
-			if len(tr.Status.TaskRunResults) > 0 && !tr.Status.GetCondition(apis.ConditionType("Verified")).IsTrue() {
-				return nil, errors.New("taskrun status condition not verified. Spire taskrun results verification failure")
-			}
-			if err := i.spireControllerAPI.VerifyStatusInternalAnnotation(tr, i.logger); err != nil {
-				return nil, errors.Wrap(err, "verifying SPIRE")
+			if err := formats.VerifySpire(ctx, tr, i.spireControllerAPI, i.logger); err != nil {
+				return nil, err
 			}
 		}
 	default:

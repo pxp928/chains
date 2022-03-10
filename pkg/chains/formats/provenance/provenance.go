@@ -17,6 +17,7 @@ limitations under the License.
 package provenance
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -33,7 +34,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/spire"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
-	"knative.dev/pkg/apis"
 
 	"github.com/google/go-containerregistry/pkg/name"
 )
@@ -74,17 +74,14 @@ func (i *Provenance) Wrap() bool {
 	return true
 }
 
-func (i *Provenance) CreatePayload(obj interface{}) (interface{}, error) {
+func (i *Provenance) CreatePayload(ctx context.Context, obj interface{}) (interface{}, error) {
 	var tr *v1beta1.TaskRun
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
 		tr = v
 		if i.spireEnabled {
-			if len(tr.Status.TaskRunResults) > 0 && !tr.Status.GetCondition(apis.ConditionType("Verified")).IsTrue() {
-				return nil, errors.New("taskrun status condition not verified. Spire taskrun results verification failure")
-			}
-			if err := i.spireControllerAPI.VerifyStatusInternalAnnotation(tr, i.logger); err != nil {
-				return nil, errors.Wrap(err, "verifying SPIRE")
+			if err := formats.VerifySpire(ctx, tr, i.spireControllerAPI, i.logger); err != nil {
+				return nil, err
 			}
 		}
 	default:

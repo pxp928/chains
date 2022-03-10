@@ -14,15 +14,14 @@ limitations under the License.
 package tekton
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/tektoncd/chains/pkg/chains/formats"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
-	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
@@ -45,17 +44,14 @@ func NewFormatter(cfg config.Config, l *zap.SugaredLogger) (formats.Payloader, e
 }
 
 // CreatePayload implements the Payloader interface.
-func (i *Tekton) CreatePayload(obj interface{}) (interface{}, error) {
+func (i *Tekton) CreatePayload(ctx context.Context, obj interface{}) (interface{}, error) {
 	var tr *v1beta1.TaskRun
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
 		tr = v
 		if i.spireEnabled {
-			if len(tr.Status.TaskRunResults) > 0 && !tr.Status.GetCondition(apis.ConditionType("Verified")).IsTrue() {
-				return nil, errors.New("taskrun status condition not verified. Spire taskrun results verification failure")
-			}
-			if err := i.spireControllerAPI.VerifyStatusInternalAnnotation(tr, i.logger); err != nil {
-				return nil, errors.Wrap(err, "verifying SPIRE")
+			if err := formats.VerifySpire(ctx, tr, i.spireControllerAPI, i.logger); err != nil {
+				return nil, err
 			}
 		}
 		return v.Status, nil

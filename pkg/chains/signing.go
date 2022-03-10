@@ -160,7 +160,7 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) e
 		// Go through each object one at a time.
 		for _, obj := range objects {
 
-			payload, err := payloader.CreatePayload(obj)
+			payload, err := payloader.CreatePayload(ctx, obj)
 			if err != nil {
 				logger.Error(err)
 				merr = multierror.Append(merr, err)
