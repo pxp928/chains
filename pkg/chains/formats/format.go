@@ -44,7 +44,7 @@ const (
 var AllFormatters = []PayloadType{PayloadTypeTekton, PayloadTypeSimpleSigning, PayloadTypeInTotoIte6, PayloadTypeProvenance}
 
 func VerifySpire(ctx context.Context, tr *v1beta1.TaskRun, spireControllerAPI *spire.SpireControllerApiClient, logger *zap.SugaredLogger) error {
-	if err := verifySignedTaskrRunResults(tr); err != nil {
+	if err := verifySignedTaskrrunResults(tr); err != nil {
 		return err
 	} else {
 		if len(tr.Status.TaskRunResults) > 0 {
@@ -59,7 +59,7 @@ func VerifySpire(ctx context.Context, tr *v1beta1.TaskRun, spireControllerAPI *s
 	return nil
 }
 
-func verifySignedTaskrRunResults(tr *v1beta1.TaskRun) error {
+func verifySignedTaskrrunResults(tr *v1beta1.TaskRun) error {
 	if len(tr.Status.TaskRunResults) > 0 {
 		taskRunCondition := tr.Status.GetCondition(apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()))
 		if taskRunCondition != nil {
