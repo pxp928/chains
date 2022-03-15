@@ -17,6 +17,7 @@ limitations under the License.
 package provenance
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -30,6 +31,8 @@ import (
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/spire"
+	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -44,8 +47,10 @@ const (
 )
 
 type Provenance struct {
-	builderID string
-	logger    *zap.SugaredLogger
+	builderID          string
+	logger             *zap.SugaredLogger
+	spireEnabled       bool
+	spireControllerAPI *spire.SpireControllerApiClient
 }
 
 func NewFormatter(cfg config.Config, logger *zap.SugaredLogger) (formats.Payloader, error) {
@@ -56,8 +61,12 @@ func NewFormatter(cfg config.Config, logger *zap.SugaredLogger) (formats.Payload
 	kubectl patch configmap chains-config -n tekton-chains -p='{"data":{"artifacts.taskrun.format": "in-toto"}}'	
 	`
 	return &Provenance{
-		builderID: cfg.Builder.ID,
-		logger:    logger,
+		builderID:    cfg.Builder.ID,
+		logger:       logger,
+		spireEnabled: cfg.SPIRE.Enabled,
+		spireControllerAPI: spire.NewSpireControllerApiClient(spireconfig.SpireConfig{
+			SocketPath: cfg.SPIRE.SocketPath,
+		}),
 	}, errors.New(errorMsg)
 }
 
@@ -65,11 +74,16 @@ func (i *Provenance) Wrap() bool {
 	return true
 }
 
-func (i *Provenance) CreatePayload(obj interface{}) (interface{}, error) {
+func (i *Provenance) CreatePayload(ctx context.Context, obj interface{}) (interface{}, error) {
 	var tr *v1beta1.TaskRun
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
 		tr = v
+		if i.spireEnabled {
+			if err := formats.VerifySpire(ctx, tr, i.spireControllerAPI, i.logger); err != nil {
+				return nil, err
+			}
+		}
 	default:
 		return nil, fmt.Errorf("intoto does not support type: %s", v)
 	}

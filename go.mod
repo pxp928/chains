@@ -4,6 +4,8 @@ go 1.16
 
 replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c
 
+replace github.com/tektoncd/pipeline v0.31.1-0.20220105002759-3e137645be61 => ../pipeline
+
 require (
 	cloud.google.com/go/compute v1.4.0
 	cloud.google.com/go/storage v1.21.0
@@ -14,7 +16,7 @@ require (
 	github.com/golangci/golangci-lint v1.44.0
 	github.com/google/addlicense v1.0.0
 	github.com/google/go-cmp v0.5.7
-	github.com/google/go-containerregistry v0.8.1-0.20220202214207-9c35968ef47e
+	github.com/google/go-containerregistry v0.8.1-0.20220211173031-41f8d92709b7
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20220125170349-50dfc2733d10
 	github.com/google/go-licenses v0.0.0-20210816172045-3099c18c36e1
 	github.com/hashicorp/errwrap v1.1.0
@@ -51,5 +53,5 @@ require (
 	k8s.io/apimachinery v0.22.5
 	k8s.io/client-go v0.22.5
 	k8s.io/code-generator v0.22.5
-	knative.dev/pkg v0.0.0-20220121092305-3ba5d72e310a
+	knative.dev/pkg v0.0.0-20220131144930-f4b57aef0006
 )
