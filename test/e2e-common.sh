@@ -59,6 +59,101 @@ function install_pipeline_crd() {
   wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
 }
 
+function spire_apply() {
+  if [ $# -lt 2 -o "$1" != "-spiffeID" ]; then
+    echo "spire_apply requires a spiffeID as the first arg" >&2
+    exit 1
+  fi
+  show=$(kubectl exec -n spire deployment/spire-server -- \
+    /opt/spire/bin/spire-server entry show $1 $2)
+  if [ "$show" != "Found 0 entries" ]; then
+    # delete to recreate
+    entryid=$(echo "$show" | grep "^Entry ID" | cut -f2 -d:)
+    kubectl exec -n spire deployment/spire-server -- \
+      /opt/spire/bin/spire-server entry delete -entryID $entryid
+  fi
+  kubectl exec -n spire deployment/spire-server -- \
+    /opt/spire/bin/spire-server entry create "$@"
+}
+
+function install_spire() {
+  echo ">> Deploying Spire"
+  DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+  echo "Creating SPIRE namespace..."
+  kubectl create ns spire
+
+  echo "Applying SPIFFE CSI Driver configuration..."
+  kubectl apply -f "$DIR"/testdata/spire/spiffe-csi-driver.yaml
+
+  echo "Deploying SPIRE server"
+  kubectl apply -f "$DIR"/testdata/spire/spire-server.yaml
+
+  echo "Deploying SPIRE agent"
+  kubectl apply -f "$DIR"/testdata/spire/spire-agent.yaml
+
+  wait_until_pods_running spire || fail_test "SPIRE did not come up"
+
+  spire_apply \
+    -spiffeID spiffe://example.org/ns/spire/node/example \
+    -selector k8s_psat:cluster:example-cluster \
+    -selector k8s_psat:agent_ns:spire \
+    -selector k8s_psat:agent_sa:spire-agent \
+    -node
+  spire_apply \
+    -spiffeID spiffe://example.org/ns/tekton-pipelines/sa/tekton-pipelines-controller \
+    -parentID spiffe://example.org/ns/spire/node/example \
+    -selector k8s:ns:tekton-pipelines \
+    -selector k8s:pod-label:app:tekton-pipelines-controller \
+    -selector k8s:sa:tekton-pipelines-controller \
+    -admin
+  spire_apply \
+    -spiffeID spiffe://example.org/ns/tekton-chains/sa/tekton-chains-controller \
+    -parentID spiffe://example.org/ns/spire/node/example \
+    -selector k8s:ns:tekton-chains \
+    -selector k8s:pod-label:app:tekton-chains-controller \
+    -selector k8s:sa:tekton-chains-controller
+}
+
+function patch_pipline_spire() {
+  echo ">> Patching Tekton Pipelines for Spire"
+  kubectl patch \
+      deployment tekton-pipelines-controller \
+      -n tekton-pipelines \
+      --patch-file "$DIR"/testdata/patch/pipeline-controller-spire.json
+      
+  verify_pipeline_installation
+}
+
+function patch_pipline_CM_spire() {
+  echo ">> Patching Tekton Pipelines CM feature-flags for Spire"
+  kubectl patch \
+      cm feature-flags \
+      -n tekton-pipelines \
+      --patch-file "$DIR"/testdata/patch/pipeline-cm-spire.json
+      
+  verify_pipeline_installation
+}
+
+function patch_chains_spire() {
+  echo ">> Patching Tekton Chains for Spire"
+  kubectl patch \
+      deployment tekton-chains-controller \
+      -n tekton-chains \
+      --patch-file "$DIR"/testdata/patch/chains-controller-spire.json
+      
+  # Wait for pods to be running in the namespaces we are deploying to
+  wait_until_pods_running tekton-chains || fail_test "Tekton Chains did not come up"
+}
+
+function verify_pipeline_installation() {
+  # Make sure that everything is cleaned up in the current namespace.
+  delete_pipeline_resources
+
+  # Wait for pods to be running in the namespaces we are deploying to
+  wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
+}
+
 function install_chains() {
   echo ">> Deploying Tekton Chains"
   ko apply -f config/ || fail_test "Tekton Chains installation failed"

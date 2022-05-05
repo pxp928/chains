@@ -43,8 +43,9 @@ import (
 	"github.com/tektoncd/chains/pkg/chains/provenance"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
@@ -62,19 +63,33 @@ func TestInstall(t *testing.T) {
 }
 
 func TestTektonStorage(t *testing.T) {
+	tektonStorageTest(t, false)
+}
+
+func TestTektonStorageWithSpire(t *testing.T) {
+	tektonStorageTest(t, true)
+}
+
+func tektonStorageTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{})
 	defer cleanup()
 
-	// Setup the right config.
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		"artifacts.taskrun.format":  "tekton",
 		"artifacts.taskrun.signer":  "x509",
 		"artifacts.taskrun.storage": "tekton",
 		"artifacts.oci.format":      "simplesigning",
 		"artifacts.oci.signer":      "x509",
 		"artifacts.oci.storage":     "tekton",
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	// Setup the right config.
+	resetConfig := setConfigMap(ctx, t, c, cm)
 	defer resetConfig()
 
 	tr, err := c.PipelineClient.TektonV1beta1().TaskRuns(ns).Create(ctx, &imageTaskRun, metav1.CreateOptions{})
@@ -93,12 +108,19 @@ func TestTektonStorage(t *testing.T) {
 }
 
 func TestRekor(t *testing.T) {
+	rekorTest(t, false)
+}
+
+func TestRekorWithSpire(t *testing.T) {
+	rekorTest(t, true)
+}
+
+func rekorTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{})
 	defer cleanup()
 
-	// Setup the right config.
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		"artifacts.taskrun.format":  "tekton",
 		"artifacts.taskrun.signer":  "x509",
 		"artifacts.taskrun.storage": "tekton",
@@ -106,7 +128,14 @@ func TestRekor(t *testing.T) {
 		"artifacts.oci.signer":      "x509",
 		"artifacts.oci.storage":     "tekton",
 		"transparency.enabled":      "manual",
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	// Setup the right config.
+	resetConfig := setConfigMap(ctx, t, c, cm)
 	defer resetConfig()
 
 	tr, err := c.PipelineClient.TektonV1beta1().TaskRuns(ns).Create(ctx, &imageTaskRun, metav1.CreateOptions{})
@@ -127,8 +156,15 @@ func TestRekor(t *testing.T) {
 	// Verify the payload signature.
 	verifySignature(ctx, t, c, tr)
 }
-
 func TestOCISigning(t *testing.T) {
+	ociSigningTest(t, false)
+}
+
+func TestOCISigningWithSpire(t *testing.T) {
+	ociSigningTest(t, true)
+}
+
+func ociSigningTest(t *testing.T, spireEnabled bool) {
 	tests := []struct {
 		name string
 		opts setupOpts
@@ -148,8 +184,14 @@ func TestOCISigning(t *testing.T) {
 			c, ns, cleanup := setup(ctx, t, test.opts)
 			defer cleanup()
 
+			cm := map[string]string{"artifacts.oci.storage": "tekton", "artifacts.taskrun.format": "tekton"}
+
+			if spireEnabled {
+				enableCMSpire(cm)
+			}
+
 			// Setup the right config.
-			resetConfig := setConfigMap(ctx, t, c, map[string]string{"artifacts.oci.storage": "tekton", "artifacts.taskrun.format": "tekton"})
+			resetConfig := setConfigMap(ctx, t, c, cm)
 
 			defer resetConfig()
 
@@ -194,6 +236,14 @@ func TestOCISigning(t *testing.T) {
 }
 
 func TestGCSStorage(t *testing.T) {
+	gcsStorageTest(t, false)
+}
+
+func TestGCSStorageWithSpire(t *testing.T) {
+	gcsStorageTest(t, true)
+}
+
+func gcsStorageTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	if metadata.OnGCE() {
 		t.Skip("Skipping, integration tests do not support GCS secrets yet.")
@@ -209,11 +259,17 @@ func TestGCSStorage(t *testing.T) {
 	c, ns, cleanup := setup(ctx, t, setupOpts{})
 	defer cleanup()
 
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		"artifacts.taskrun.signer":  "x509",
 		"artifacts.taskrun.storage": "gcs",
 		"storage.gcs.bucket":        bucketName,
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	resetConfig := setConfigMap(ctx, t, c, cm)
 	defer resetConfig()
 	time.Sleep(3 * time.Second)
 
@@ -233,20 +289,34 @@ func TestGCSStorage(t *testing.T) {
 }
 
 func TestFulcio(t *testing.T) {
+	fulcioTest(t, false)
+}
+
+func TestFulcioWithSpire(t *testing.T) {
+	fulcioTest(t, true)
+}
+
+func fulcioTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	if metadata.OnGCE() {
 		t.Skip("Skipping, integration tests do not support workload identity yet.")
 	}
 	c, ns, cleanup := setup(ctx, t, setupOpts{ns: "default"})
 	defer cleanup()
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		"artifacts.taskrun.storage":   "tekton",
 		"artifacts.taskrun.signer":    "x509",
 		"artifacts.taskrun.format":    "in-toto",
 		"artifacts.oci.signer":        "x509",
 		"signers.x509.fulcio.enabled": "true",
 		"transparency.enabled":        "false",
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	resetConfig := setConfigMap(ctx, t, c, cm)
 
 	defer resetConfig()
 	time.Sleep(3 * time.Second)
@@ -321,11 +391,19 @@ func (w *reverseDSSEVerifier) VerifySignature(s io.Reader, m io.Reader, opts ...
 }
 
 func TestOCIStorage(t *testing.T) {
+	ociStorageTest(t, false)
+}
+
+func TestOCIStorageWithSpire(t *testing.T) {
+	ociStorageTest(t, true)
+}
+
+func ociStorageTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{registry: true})
 	defer cleanup()
 
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		"artifacts.oci.format":            "simplesigning",
 		"artifacts.oci.storage":           "oci",
 		"artifacts.oci.signer":            "x509",
@@ -333,7 +411,13 @@ func TestOCIStorage(t *testing.T) {
 		"artifacts.taskrun.signer":        "x509",
 		"artifacts.taskrun.storage":       "oci",
 		"storage.oci.repository.insecure": "true",
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	resetConfig := setConfigMap(ctx, t, c, cm)
 	defer resetConfig()
 	time.Sleep(3 * time.Second)
 
@@ -369,11 +453,19 @@ func TestOCIStorage(t *testing.T) {
 }
 
 func TestMultiBackendStorage(t *testing.T) {
+	multiBackendStorageTest(t, false)
+}
+
+func TestMultiBackendStorageWithSpire(t *testing.T) {
+	multiBackendStorageTest(t, true)
+}
+
+func multiBackendStorageTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{registry: true})
 	defer cleanup()
 
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		"artifacts.oci.format":            "simplesigning",
 		"artifacts.oci.storage":           "tekton,oci",
 		"artifacts.oci.signer":            "x509",
@@ -381,7 +473,13 @@ func TestMultiBackendStorage(t *testing.T) {
 		"artifacts.taskrun.signer":        "x509",
 		"artifacts.taskrun.storage":       "tekton,oci",
 		"storage.oci.repository.insecure": "true",
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	resetConfig := setConfigMap(ctx, t, c, cm)
 	defer resetConfig()
 	time.Sleep(3 * time.Second)
 
@@ -422,16 +520,30 @@ func TestMultiBackendStorage(t *testing.T) {
 }
 
 func TestRetryFailed(t *testing.T) {
+	retryFailedTest(t, false)
+}
+
+func TestRetryFailedWithSpire(t *testing.T) {
+	retryFailedTest(t, true)
+}
+
+func retryFailedTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{registry: true})
 	defer cleanup()
 
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		// don't set insecure repository, forcing signature upload to fail
 		"artifacts.oci.storage":     "oci",
 		"artifacts.taskrun.storage": "tekton",
 		"storage.oci.repository":    "gcr.io/not-real",
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	resetConfig := setConfigMap(ctx, t, c, cm)
 	defer resetConfig()
 	time.Sleep(3 * time.Second)
 
@@ -457,9 +569,8 @@ func TestRetryFailed(t *testing.T) {
 var imageTaskSpec = v1beta1.TaskSpec{
 	Steps: []v1beta1.Step{
 		{
-			Container: corev1.Container{
-				Image: "busybox",
-			},
+
+			Image: "busybox",
 			Script: `set -e
 cat <<EOF > $(outputs.resources.image.path)/index.json
 {
@@ -516,16 +627,30 @@ var imageTaskRun = v1beta1.TaskRun{
 }
 
 func TestProvenanceMaterials(t *testing.T) {
+	provenanceMaterialsTest(t, false)
+}
+
+func TestProvenanceMaterialsWithSpire(t *testing.T) {
+	provenanceMaterialsTest(t, true)
+}
+
+func provenanceMaterialsTest(t *testing.T, spireEnabled bool) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{})
 	defer cleanup()
 
-	// Setup the right config.
-	resetConfig := setConfigMap(ctx, t, c, map[string]string{
+	cm := map[string]string{
 		"artifacts.taskrun.format":  "in-toto",
 		"artifacts.taskrun.signer":  "x509",
 		"artifacts.taskrun.storage": "tekton",
-	})
+	}
+
+	if spireEnabled {
+		enableCMSpire(cm)
+	}
+
+	// Setup the right config.
+	resetConfig := setConfigMap(ctx, t, c, cm)
 	defer resetConfig()
 
 	// modify image task run to add in the params we want to check for
@@ -582,7 +707,6 @@ func TestProvenanceMaterials(t *testing.T) {
 		t.Fatal(string(d))
 	}
 }
-
 func TestVaultKMSSpire(t *testing.T) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{})
@@ -638,5 +762,90 @@ func TestVaultKMSSpire(t *testing.T) {
 	// verify the signature
 	if err := pubKey.VerifySignature(bytes.NewReader(sigBytes), bytes.NewReader(payloadBytes)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestTaskrunResultsFailuretoVerifybySpire(t *testing.T) {
+	ctx := logtesting.TestContextWithLogger(t)
+	c, ns, cleanup := setup(ctx, t, setupOpts{})
+	defer cleanup()
+
+	cm := map[string]string{
+		"artifacts.taskrun.format":  "in-toto",
+		"artifacts.taskrun.storage": "tekton",
+	}
+
+	enableCMSpire(cm)
+
+	// Setup the right config.
+	resetConfig := setConfigMap(ctx, t, c, cm)
+	defer resetConfig()
+
+	taskRunName := "failing-taskrun"
+
+	t.Logf("Creating Task and TaskRun in namespace %s", ns)
+	task := mustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: failing-task
+  namespace: %s
+spec:
+  steps:
+  - image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'echo hello']
+  - image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'exit 1']
+  - image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'sleep 30s']
+`, ns))
+	if _, err := c.PipelineClient.TektonV1beta1().Tasks(ns).Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("error creating task: %s", err)
+	}
+	taskRun := mustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: failing-task
+`, taskRunName, ns))
+	tr, err := c.PipelineClient.TektonV1beta1().TaskRuns(ns).Create(ctx, taskRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Errorf("error creating taskrun: %s", err)
+	}
+
+	// Give it a minute to complete.
+	waitForCondition(ctx, t, c.PipelineClient, tr.Name, ns, failed, 60*time.Second)
+	value, ok := tr.Annotations["chains.tekton.dev/signed"]
+	if ok && value == "failed" {
+		t.Error("taskrun failed should not have chains.tekton.dev/signed")
+	}
+}
+
+// mustParseTask takes YAML and parses it into a *v1beta1.Task
+func mustParseTask(t *testing.T, yaml string) *v1beta1.Task {
+	var task v1beta1.Task
+	yaml = `apiVersion: tekton.dev/v1beta1
+kind: Task
+` + yaml
+	mustParseYAML(t, yaml, &task)
+	return &task
+}
+
+// mustParseTaskRun takes YAML and parses it into a *v1beta1.TaskRun
+func mustParseTaskRun(t *testing.T, yaml string) *v1beta1.TaskRun {
+	var tr v1beta1.TaskRun
+	yaml = `apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+` + yaml
+	mustParseYAML(t, yaml, &tr)
+	return &tr
+}
+
+func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
+	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
+		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
 	}
 }

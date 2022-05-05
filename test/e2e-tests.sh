@@ -25,11 +25,17 @@ initialize $@
 
 header "Setting up environment"
 
+install_spire
+
 # Test against nightly instead of latest.
 install_tkn
 
 export RELEASE_YAML="https://storage.googleapis.com/tekton-releases-nightly/pipeline/latest/release.yaml"
 install_pipeline_crd
+
+patch_pipline_spire
+
+patch_pipline_CM_spire
 
 install_chains
 
@@ -37,7 +43,7 @@ install_spire
 
 install_vault
 
-chains_patch_spire
+patch_chains_spire
 
 failed=0
 

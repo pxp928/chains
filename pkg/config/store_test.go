@@ -124,6 +124,10 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
+				},
 			},
 		},
 		{
@@ -150,6 +154,10 @@ func TestParse(t *testing.T) {
 				Signers: defaultSigners,
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
 		},
@@ -178,6 +186,10 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
+				},
 			},
 		},
 		{
@@ -204,6 +216,10 @@ func TestParse(t *testing.T) {
 				Signers: defaultSigners,
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
 		},
@@ -232,6 +248,10 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
+				},
 			},
 		},
 		{
@@ -258,6 +278,10 @@ func TestParse(t *testing.T) {
 				Signers: defaultSigners,
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
 		},
@@ -286,6 +310,10 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
+				},
 			},
 		},
 		{
@@ -312,6 +340,10 @@ func TestParse(t *testing.T) {
 				Signers: defaultSigners,
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
 		},
@@ -342,6 +374,10 @@ func TestParse(t *testing.T) {
 					VerifyAnnotation: true,
 					URL:              "https://rekor.sigstore.dev",
 				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
+				},
 			},
 		},
 		{
@@ -368,6 +404,10 @@ func TestParse(t *testing.T) {
 				Signers: defaultSigners,
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
 		}, {
@@ -405,6 +445,10 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					URL: "https://rekor.sigstore.dev",
 				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
+				},
 			},
 		}, {
 			name: "rekor - true",
@@ -438,6 +482,10 @@ func TestParse(t *testing.T) {
 				Transparency: TransparencyConfig{
 					Enabled: true,
 					URL:     "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
 		}, {
@@ -473,6 +521,10 @@ func TestParse(t *testing.T) {
 					Enabled:          true,
 					VerifyAnnotation: true,
 					URL:              "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    false,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
 		},
