@@ -527,6 +527,44 @@ func TestParse(t *testing.T) {
 					SocketPath: "/spiffe-workload-api/spire-agent.sock",
 				},
 			},
+		}, {
+			name: "spire enabled",
+			data: map[string]string{
+				"spire.enabled":    "true",
+				"spire.socketPath": "/spiffe-workload-api/spire-agent.sock",
+			},
+			taskrunEnabled: true,
+			ociEnbaled:     true,
+			want: Config{
+				Builder: BuilderConfig{
+					"https://tekton.dev/chains/v2",
+				},
+				Artifacts: ArtifactConfigs{
+					TaskRuns: Artifact{
+						Format:         "tekton",
+						Signer:         "x509",
+						StorageBackend: sets.NewString("tekton"),
+					},
+					OCI: Artifact{
+						Format:         "simplesigning",
+						StorageBackend: sets.NewString("oci"),
+						Signer:         "x509",
+					},
+				},
+				Signers: SignerConfigs{
+					X509: X509Signer{
+						FulcioAddr:       "https://fulcio.sigstore.dev",
+						FulcioOIDCIssuer: "https://oauth2.sigstore.dev/auth",
+					},
+				},
+				Transparency: TransparencyConfig{
+					URL: "https://rekor.sigstore.dev",
+				},
+				SPIRE: SPIREConfig{
+					Enabled:    true,
+					SocketPath: "/spiffe-workload-api/spire-agent.sock",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -540,6 +578,9 @@ func TestParse(t *testing.T) {
 			}
 			if got.Artifacts.TaskRuns.Enabled() != tt.taskrunEnabled {
 				t.Errorf("Taskrun artifact enable mismatch")
+			}
+			if got.SPIRE.Enabled != tt.want.SPIRE.Enabled {
+				t.Errorf("Spire enabled mismatch")
 			}
 			if diff := cmp.Diff(*got, tt.want); diff != "" {
 				t.Errorf("parse() = %v", diff)

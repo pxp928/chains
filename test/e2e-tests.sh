@@ -39,8 +39,6 @@ patch_pipline_CM_spire
 
 install_chains
 
-install_spire
-
 install_vault
 
 patch_chains_spire
