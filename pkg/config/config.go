@@ -231,7 +231,7 @@ func defaultConfig() *Config {
 			ID: "https://tekton.dev/chains/v2",
 		},
 		SPIRE: SPIREConfig{
-			Enabled:    true,
+			Enabled:    false,
 			SocketPath: "/spiffe-workload-api/spire-agent.sock",
 		},
 	}

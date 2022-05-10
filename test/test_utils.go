@@ -268,3 +268,8 @@ func verifySignature(ctx context.Context, t *testing.T, c *clients, tr *v1beta1.
 		}
 	}
 }
+
+func enableCMSpire(cm map[string]string) {
+	cm["spire.enabled"] = "true"
+	cm["spire.socketPath"] = "/spiffe-workload-api/spire-agent.sock"
+}
