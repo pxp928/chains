@@ -2933,7 +2933,7 @@ k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/code-generator v0.23.6
+# k8s.io/code-generator v0.24.3
 ## explicit; go 1.16
 k8s.io/code-generator/cmd/deepcopy-gen
 k8s.io/code-generator/cmd/deepcopy-gen/args
@@ -2947,13 +2947,14 @@ k8s.io/gengo/generator
 k8s.io/gengo/namer
 k8s.io/gengo/parser
 k8s.io/gengo/types
-# k8s.io/klog/v2 v2.60.1-0.20220317184644-43cc75f9ae89
+# k8s.io/klog/v2 v2.60.1
 ## explicit; go 1.13
 k8s.io/klog/v2
 k8s.io/klog/v2/internal/buffer
+k8s.io/klog/v2/internal/clock
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
-# k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf => k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c
+# k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 => k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c
 ## explicit; go 1.12
 k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/schemaconv
