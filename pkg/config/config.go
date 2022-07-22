@@ -32,6 +32,7 @@ type Config struct {
 	Signers      SignerConfigs
 	Builder      BuilderConfig
 	Transparency TransparencyConfig
+	Runtime      RuntimeConfig
 }
 
 // ArtifactConfigs contains the configuration for how to sign/store/format the signatures for each artifact type
@@ -138,6 +139,11 @@ type TransparencyConfig struct {
 	URL              string
 }
 
+type RuntimeConfig struct {
+	Enabled       bool
+	ServerAddress string
+}
+
 const (
 	taskrunFormatKey  = "artifacts.taskrun.format"
 	taskrunStorageKey = "artifacts.taskrun.storage"
@@ -188,6 +194,10 @@ const (
 	transparencyURLKey     = "transparency.url"
 
 	ChainsConfig = "chains-config"
+
+	// SPIRE config
+	runtimeEnabledKey = "runtime.enabled"
+	runtimeServerPath = "runtime.serverPath"
 )
 
 func (artifact *Artifact) Enabled() bool {
@@ -219,6 +229,10 @@ func defaultConfig() *Config {
 		},
 		Builder: BuilderConfig{
 			ID: "https://tekton.dev/chains/v2",
+		},
+		Runtime: RuntimeConfig{
+			Enabled:       false,
+			ServerAddress: "/spiffe-workload-api/spire-agent.sock",
 		},
 	}
 }
@@ -274,6 +288,10 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 
 		// Build config
 		asString(builderIDKey, &cfg.Builder.ID),
+
+		// Spire config
+		asBool(runtimeEnabledKey, &cfg.Runtime.Enabled),
+		asString(runtimeServerPath, &cfg.Runtime.ServerAddress, "/spiffe-workload-api/spire-agent.sock"),
 	); err != nil {
 		return nil, fmt.Errorf("failed to parse data: %w", err)
 	}
