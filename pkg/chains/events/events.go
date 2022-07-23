@@ -16,11 +16,24 @@ package events
 import (
 	"context"
 
+	"github.com/tektoncd/chains/pkg/chains/events/tetragon"
+	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"go.uber.org/zap"
 )
 
 // ControllerAPIClient interface maps to the spire controller API to interact with spire
 type RuntimeAPI interface {
 	GetEvents(ctx context.Context, tr *v1beta1.TaskRun) error
 	Close() error
+}
+
+// InitializeBackends creates and initializes every configured storage backend.
+func InitializeRuntime(ctx context.Context, logger *zap.SugaredLogger, cfg config.Config) (RuntimeAPI, error) {
+
+	tetragon, err := tetragon.NewEventsBackend(ctx, logger, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return tetragon, nil
 }

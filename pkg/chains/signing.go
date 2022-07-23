@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/chains/pkg/artifacts"
+	"github.com/tektoncd/chains/pkg/chains/events"
 	"github.com/tektoncd/chains/pkg/chains/formats"
 	"github.com/tektoncd/chains/pkg/chains/formats/intotoite6"
 	"github.com/tektoncd/chains/pkg/chains/formats/simple"
@@ -38,6 +39,7 @@ import (
 
 type Signer interface {
 	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) error
+	GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) error
 }
 
 type TaskRunSigner struct {
@@ -50,6 +52,7 @@ type TaskRunSigner struct {
 	// The keys are different storage option's name. {docdb, gcs, grafeas, oci, tekton}
 	// The values are the actual storage backends that will be used to store and retrieve provenance.
 	Backends          map[string]storage.Backend
+	Runtime           events.RuntimeAPI
 	SecretPath        string
 	Pipelineclientset versioned.Interface
 }
@@ -107,6 +110,14 @@ func AllFormatters(cfg config.Config, l *zap.SugaredLogger) map[formats.PayloadT
 	}
 
 	return all
+}
+
+// SignTaskRun signs a TaskRun, and marks it as signed.
+func (ts *TaskRunSigner) GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
+	if err := ts.Runtime.GetEvents(ctx, tr); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SignTaskRun signs a TaskRun, and marks it as signed.

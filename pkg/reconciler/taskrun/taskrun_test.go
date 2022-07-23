@@ -166,10 +166,16 @@ func TestReconciler_handleTaskRun(t *testing.T) {
 }
 
 type mockSigner struct {
-	signed bool
+	signed  bool
+	runtime bool
 }
 
 func (m *mockSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) error {
 	m.signed = true
+	return nil
+}
+
+func (m *mockSigner) GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
+	m.runtime = true
 	return nil
 }

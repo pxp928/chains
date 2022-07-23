@@ -17,6 +17,7 @@ import (
 	"context"
 
 	"github.com/tektoncd/chains/pkg/chains"
+	"github.com/tektoncd/chains/pkg/chains/events"
 	"github.com/tektoncd/chains/pkg/chains/storage"
 	"github.com/tektoncd/chains/pkg/config"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -56,7 +57,14 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 			if err != nil {
 				logger.Error(err)
 			}
+
+			// get all backends for storing provenance
+			runtime, err := events.InitializeRuntime(ctx, logger, cfg)
+			if err != nil {
+				logger.Error(err)
+			}
 			tsSigner.Backends = backends
+			tsSigner.Runtime = runtime
 		})
 
 		// setup watches for the config names provided by client

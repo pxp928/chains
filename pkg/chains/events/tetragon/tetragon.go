@@ -17,7 +17,6 @@ import (
 	"context"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/tektoncd/chains/pkg/chains/events"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
@@ -33,7 +32,7 @@ type tetragonAPIClient struct {
 }
 
 // NewStorageBackend returns a new Tekton StorageBackend that stores signatures on a TaskRun
-func NewEventsBackend(ctx context.Context, logger *zap.SugaredLogger, cfg config.Config) (events.RuntimeAPI, error) {
+func NewEventsBackend(ctx context.Context, logger *zap.SugaredLogger, cfg config.Config) (*tetragonAPIClient, error) {
 	return &tetragonAPIClient{
 		logger: logger,
 		cfg:    cfg,
@@ -55,6 +54,9 @@ func (t *tetragonAPIClient) dial(ctx context.Context) error {
 }
 
 func (t *tetragonAPIClient) GetEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
+	if t.serverConn == nil || t.client == nil {
+		t.dial(ctx)
+	}
 	stream, err := t.client.GetEvents(ctx, &tetragon.GetEventsRequest{})
 	if err != nil {
 		return err

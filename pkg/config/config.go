@@ -195,7 +195,7 @@ const (
 
 	ChainsConfig = "chains-config"
 
-	// SPIRE config
+	// Runtime config
 	runtimeEnabledKey = "runtime.enabled"
 	runtimeServerPath = "runtime.serverPath"
 )
@@ -289,7 +289,7 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		// Build config
 		asString(builderIDKey, &cfg.Builder.ID),
 
-		// Spire config
+		// Runtime config
 		asBool(runtimeEnabledKey, &cfg.Runtime.Enabled),
 		asString(runtimeServerPath, &cfg.Runtime.ServerAddress, "/spiffe-workload-api/spire-agent.sock"),
 	); err != nil {
