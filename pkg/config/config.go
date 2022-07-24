@@ -231,8 +231,8 @@ func defaultConfig() *Config {
 			ID: "https://tekton.dev/chains/v2",
 		},
 		Runtime: RuntimeConfig{
-			Enabled:       false,
-			ServerAddress: "/spiffe-workload-api/spire-agent.sock",
+			Enabled:       true,
+			ServerAddress: "tetragon.tetragon.svc.cluster.local:54321",
 		},
 	}
 }
@@ -291,7 +291,7 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 
 		// Runtime config
 		asBool(runtimeEnabledKey, &cfg.Runtime.Enabled),
-		asString(runtimeServerPath, &cfg.Runtime.ServerAddress, "/spiffe-workload-api/spire-agent.sock"),
+		asString(runtimeServerPath, &cfg.Runtime.ServerAddress),
 	); err != nil {
 		return nil, fmt.Errorf("failed to parse data: %w", err)
 	}

@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+
 	"github.com/tektoncd/chains/pkg/config"
 
 	"github.com/tektoncd/chains/pkg/patch"
@@ -28,11 +29,13 @@ import (
 )
 
 const (
-	StorageBackendTekton      = "tekton"
-	PayloadAnnotationFormat   = "chains.tekton.dev/payload-%s"
-	SignatureAnnotationFormat = "chains.tekton.dev/signature-%s"
-	CertAnnotationsFormat     = "chains.tekton.dev/cert-%s"
-	ChainAnnotationFormat     = "chains.tekton.dev/chain-%s"
+	StorageBackendTekton             = "tekton"
+	PayloadAnnotationFormat          = "chains.tekton.dev/payload-%s"
+	SignatureAnnotationFormat        = "chains.tekton.dev/signature-%s"
+	RuntimePayloadAnnotationFormat   = "chains.tekton.dev/runtime-payload-%s"
+	RuntimeSignatureAnnotationFormat = "chains.tekton.dev/runtime-signature-%s"
+	CertAnnotationsFormat            = "chains.tekton.dev/cert-%s"
+	ChainAnnotationFormat            = "chains.tekton.dev/chain-%s"
 )
 
 // Backend is a storage backend that stores signed payloads in the TaskRun metadata as an annotation.
@@ -53,22 +56,38 @@ func NewStorageBackend(ps versioned.Interface, logger *zap.SugaredLogger) *Backe
 // StorePayload implements the Payloader interface.
 func (b *Backend) StorePayload(ctx context.Context, tr *v1beta1.TaskRun, rawPayload []byte, signature string, opts config.StorageOpts) error {
 	b.logger.Infof("Storing payload on TaskRun %s/%s", tr.Namespace, tr.Name)
+	if !opts.IsRuntime {
+		// Use patch instead of update to prevent race conditions.
+		patchBytes, err := patch.GetAnnotationsPatch(map[string]string{
+			// Base64 encode both the signature and the payload
+			fmt.Sprintf(PayloadAnnotationFormat, opts.Key):   base64.StdEncoding.EncodeToString(rawPayload),
+			fmt.Sprintf(SignatureAnnotationFormat, opts.Key): base64.StdEncoding.EncodeToString([]byte(signature)),
+			fmt.Sprintf(CertAnnotationsFormat, opts.Key):     base64.StdEncoding.EncodeToString([]byte(opts.Cert)),
+			fmt.Sprintf(ChainAnnotationFormat, opts.Key):     base64.StdEncoding.EncodeToString([]byte(opts.Chain)),
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := b.pipelienclientset.TektonV1beta1().TaskRuns(tr.Namespace).Patch(
+			ctx, tr.Name, types.MergePatchType, patchBytes, v1.PatchOptions{}); err != nil {
+			return err
+		}
+	} else {
+		// Use patch instead of update to prevent race conditions.
+		patchBytes, err := patch.GetAnnotationsPatch(map[string]string{
+			// Base64 encode both the signature and the payload
+			fmt.Sprintf(RuntimePayloadAnnotationFormat, opts.Key):   base64.StdEncoding.EncodeToString(rawPayload),
+			fmt.Sprintf(RuntimeSignatureAnnotationFormat, opts.Key): base64.StdEncoding.EncodeToString([]byte(signature)),
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := b.pipelienclientset.TektonV1beta1().TaskRuns(tr.Namespace).Patch(
+			ctx, tr.Name, types.MergePatchType, patchBytes, v1.PatchOptions{}); err != nil {
+			return err
+		}
+	}
 
-	// Use patch instead of update to prevent race conditions.
-	patchBytes, err := patch.GetAnnotationsPatch(map[string]string{
-		// Base64 encode both the signature and the payload
-		fmt.Sprintf(PayloadAnnotationFormat, opts.Key):   base64.StdEncoding.EncodeToString(rawPayload),
-		fmt.Sprintf(SignatureAnnotationFormat, opts.Key): base64.StdEncoding.EncodeToString([]byte(signature)),
-		fmt.Sprintf(CertAnnotationsFormat, opts.Key):     base64.StdEncoding.EncodeToString([]byte(opts.Cert)),
-		fmt.Sprintf(ChainAnnotationFormat, opts.Key):     base64.StdEncoding.EncodeToString([]byte(opts.Chain)),
-	})
-	if err != nil {
-		return err
-	}
-	if _, err := b.pipelienclientset.TektonV1beta1().TaskRuns(tr.Namespace).Patch(
-		ctx, tr.Name, types.MergePatchType, patchBytes, v1.PatchOptions{}); err != nil {
-		return err
-	}
 	return nil
 }
 

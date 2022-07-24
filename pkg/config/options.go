@@ -40,4 +40,6 @@ type StorageOpts struct {
 	// - For OCI artifact, Chains only supports `simplesigning` format. https://www.redhat.com/en/blog/container-image-signing
 	// - For TaskRun artifact, Chains supports `tekton` and `in-toto` format. https://slsa.dev/provenance/v0.2
 	PayloadFormat formats.PayloadType
+	// IsRuntime attestation getting stored
+	IsRuntime bool
 }

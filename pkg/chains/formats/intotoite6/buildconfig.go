@@ -19,6 +19,7 @@ package intotoite6
 import (
 	"strings"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -26,6 +27,10 @@ import (
 // "buildConfig" section of the slsa-provenance predicate
 type BuildConfig struct {
 	Steps []Step `json:"steps"`
+}
+
+type RuntimeBuildConfig struct {
+	Processes []tetragon.Process `json:"tetragon.Process"`
 }
 
 // Step corresponds to one step in the TaskRun
@@ -59,6 +64,14 @@ func buildConfig(tr *v1beta1.TaskRun) BuildConfig {
 		steps = append(steps, s)
 	}
 	return BuildConfig{Steps: steps}
+}
+
+func runtimeBuildConfig(tetragonProcesses []*tetragon.Process) RuntimeBuildConfig {
+	processes := []tetragon.Process{}
+	for _, p := range tetragonProcesses {
+		processes = append(processes, *p)
+	}
+	return RuntimeBuildConfig{Processes: processes}
 }
 
 func container(stepState v1beta1.StepState, tr *v1beta1.TaskRun) v1beta1.Step {

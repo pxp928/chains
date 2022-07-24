@@ -38,8 +38,8 @@ import (
 )
 
 type Signer interface {
-	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) error
-	GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) error
+	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []interface{}) error
+	GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) ([]interface{}, error)
 }
 
 type TaskRunSigner struct {
@@ -113,15 +113,12 @@ func AllFormatters(cfg config.Config, l *zap.SugaredLogger) map[formats.PayloadT
 }
 
 // SignTaskRun signs a TaskRun, and marks it as signed.
-func (ts *TaskRunSigner) GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
-	if err := ts.Runtime.GetEvents(ctx, tr); err != nil {
-		return err
-	}
-	return nil
+func (ts *TaskRunSigner) GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) ([]interface{}, error) {
+	return ts.Runtime.GetEvents(ctx, tr)
 }
 
 // SignTaskRun signs a TaskRun, and marks it as signed.
-func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) error {
+func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []interface{}) error {
 	cfg := *config.FromContext(ctx)
 	logger := logging.FromContext(ctx)
 
@@ -140,6 +137,7 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) e
 
 	var merr *multierror.Error
 	extraAnnotations := map[string]string{}
+	var runtimePayload interface{}
 	for _, signableType := range enabledSignableTypes {
 		if !signableType.Enabled(cfg) {
 			continue
@@ -158,9 +156,19 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) e
 		objects := signableType.ExtractObjects(tr)
 
 		// Go through each object one at a time.
+
 		for _, obj := range objects {
 
 			payload, err := payloader.CreatePayload(obj)
+			var runtimeRawPayload []byte
+			if processes != nil {
+				runtimePayload, err = payloader.CreateRuntimePayload(obj, processes)
+				runtimeRawPayload, err = json.Marshal(runtimePayload)
+				if err != nil {
+					logger.Warnf("Unable to marshal payload: %v", obj)
+				}
+				logger.Infof("Runtime Payload %s", runtimeRawPayload)
+			}
 			if err != nil {
 				logger.Error(err)
 				continue
@@ -205,10 +213,35 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) e
 					Cert:          signer.Cert(),
 					Chain:         signer.Chain(),
 					PayloadFormat: payloadFormat,
+					IsRuntime:     false,
 				}
 				if err := b.StorePayload(ctx, tr, rawPayload, string(signature), storageOpts); err != nil {
 					logger.Error(err)
 					merr = multierror.Append(merr, err)
+				}
+			}
+
+			if runtimeRawPayload != nil {
+				signature, err := signer.SignMessage(bytes.NewReader(runtimeRawPayload))
+				if err != nil {
+					logger.Error(err)
+					continue
+				}
+
+				// Now store those!
+				for _, backend := range signableType.StorageBackend(cfg).List() {
+					b := ts.Backends[backend]
+					storageOpts := config.StorageOpts{
+						Key:           signableType.Key(obj),
+						Cert:          signer.Cert(),
+						Chain:         signer.Chain(),
+						PayloadFormat: payloadFormat,
+						IsRuntime:     true,
+					}
+					if err := b.StorePayload(ctx, tr, runtimeRawPayload, string(signature), storageOpts); err != nil {
+						logger.Error(err)
+						merr = multierror.Append(merr, err)
+					}
 				}
 			}
 

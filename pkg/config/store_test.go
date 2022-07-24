@@ -475,6 +475,44 @@ func TestParse(t *testing.T) {
 					URL:              "https://rekor.sigstore.dev",
 				},
 			},
+		}, {
+			name: "runtime - true",
+			data: map[string]string{
+				"runtime.enabled":    "true",
+				"runtime.serverPath": "localhost:54321",
+			},
+			taskrunEnabled: true,
+			ociEnbaled:     true,
+			want: Config{
+				Builder: BuilderConfig{
+					"https://tekton.dev/chains/v2",
+				},
+				Artifacts: ArtifactConfigs{
+					TaskRuns: Artifact{
+						Format:         "tekton",
+						Signer:         "x509",
+						StorageBackend: sets.NewString("tekton"),
+					},
+					OCI: Artifact{
+						Format:         "simplesigning",
+						StorageBackend: sets.NewString("oci"),
+						Signer:         "x509",
+					},
+				},
+				Signers: SignerConfigs{
+					X509: X509Signer{
+						FulcioAddr:       "https://fulcio.sigstore.dev",
+						FulcioOIDCIssuer: "https://oauth2.sigstore.dev/auth",
+					},
+				},
+				Transparency: TransparencyConfig{
+					URL: "https://rekor.sigstore.dev",
+				},
+				Runtime: RuntimeConfig{
+					Enabled:       true,
+					ServerAddress: "localhost:54321",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {

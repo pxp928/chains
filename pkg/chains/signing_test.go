@@ -192,7 +192,7 @@ func TestTaskRunSigner_SignTaskRun(t *testing.T) {
 			if _, err := ps.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 				t.Errorf("error creating fake taskrun: %v", err)
 			}
-			if err := ts.SignTaskRun(ctx, tr); (err != nil) != tt.wantErr {
+			if err := ts.SignTaskRun(ctx, tr, nil); (err != nil) != tt.wantErr {
 				t.Errorf("TaskRunSigner.SignTaskRun() error = %v", err)
 			}
 
@@ -265,7 +265,7 @@ func TestTaskRunSigner_Transparency(t *testing.T) {
 		if _, err := ps.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 			t.Errorf("error creating fake taskrun: %v", err)
 		}
-		if err := ts.SignTaskRun(ctx, tr); err != nil {
+		if err := ts.SignTaskRun(ctx, tr, nil); err != nil {
 			t.Errorf("TaskRunSigner.SignTaskRun() error = %v", err)
 		}
 
@@ -285,7 +285,7 @@ func TestTaskRunSigner_Transparency(t *testing.T) {
 		if _, err := ps.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr2, metav1.CreateOptions{}); err != nil {
 			t.Errorf("error creating fake taskrun: %v", err)
 		}
-		if err := ts.SignTaskRun(ctx, tr2); err != nil {
+		if err := ts.SignTaskRun(ctx, tr2, nil); err != nil {
 			t.Errorf("TaskRunSigner.SignTaskRun() error = %v", err)
 		}
 
@@ -306,7 +306,7 @@ func TestTaskRunSigner_Transparency(t *testing.T) {
 		if _, err := ps.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr3, metav1.CreateOptions{}); err != nil {
 			t.Errorf("error creating fake taskrun: %v", err)
 		}
-		if err := ts.SignTaskRun(ctx, tr3); err != nil {
+		if err := ts.SignTaskRun(ctx, tr3, nil); err != nil {
 			t.Errorf("TaskRunSigner.SignTaskRun() error = %v", err)
 		}
 
@@ -315,7 +315,7 @@ func TestTaskRunSigner_Transparency(t *testing.T) {
 		}
 		// add in the annotation
 		tr3.Annotations = map[string]string{RekorAnnotation: "true"}
-		if err := ts.SignTaskRun(ctx, tr3); err != nil {
+		if err := ts.SignTaskRun(ctx, tr3, nil); err != nil {
 			t.Errorf("TaskRunSigner.SignTaskRun() error = %v", err)
 		}
 

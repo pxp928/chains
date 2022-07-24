@@ -71,6 +71,10 @@ func NewStorageBackend(ctx context.Context, logger *zap.SugaredLogger, client ku
 
 // StorePayload implements the storage.Backend interface.
 func (b *Backend) StorePayload(ctx context.Context, tr *v1beta1.TaskRun, rawPayload []byte, signature string, storageOpts config.StorageOpts) error {
+	if storageOpts.IsRuntime {
+		// NEED TO IMPLEMENT
+		return fmt.Errorf("unimplemented type for runtime %s", "OCI")
+	}
 	auth, err := b.getAuthenticator(ctx, tr, b.client)
 	if err != nil {
 		return err

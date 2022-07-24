@@ -48,11 +48,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 // get cleaned up before we see the final state and sign it.
 func (r *Reconciler) FinalizeKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
 	// Check to make sure the TaskRun has started and events can be recorded.
-	if tr.HasStarted() {
-		if err := r.TaskRunSigner.GetTaskRunEvents(ctx, tr); err != nil {
-			return err
-		}
-	}
+	var processes []interface{}
+	var err error
+
 	// Check to make sure the TaskRun is finished.
 	if !tr.IsDone() {
 		logging.FromContext(ctx).Infof("taskrun %s/%s is still running", tr.Namespace, tr.Name)
@@ -64,7 +62,13 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, tr *v1beta1.TaskRun) pkgr
 		return nil
 	}
 
-	if err := r.TaskRunSigner.SignTaskRun(ctx, tr); err != nil {
+	if tr.HasStarted() && tr.IsDone() {
+		if processes, err = r.TaskRunSigner.GetTaskRunEvents(ctx, tr); err != nil {
+			return err
+		}
+	}
+
+	if err := r.TaskRunSigner.SignTaskRun(ctx, tr, processes); err != nil {
 		return err
 	}
 	return nil

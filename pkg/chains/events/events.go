@@ -24,7 +24,7 @@ import (
 
 // ControllerAPIClient interface maps to the spire controller API to interact with spire
 type RuntimeAPI interface {
-	GetEvents(ctx context.Context, tr *v1beta1.TaskRun) error
+	GetEvents(ctx context.Context, tr *v1beta1.TaskRun) ([]interface{}, error)
 	Close() error
 }
 
