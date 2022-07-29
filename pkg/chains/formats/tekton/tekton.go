@@ -35,9 +35,11 @@ type Tekton struct {
 
 func NewFormatter(ctx context.Context, cfg config.Config, l *zap.SugaredLogger) (formats.Payloader, error) {
 	tekton := &Tekton{
-		logger:             l,
-		spireEnabled:       cfg.SPIRE.Enabled,
-		spireControllerAPI: spire.GetControllerAPIClient(ctx),
+		logger:       l,
+		spireEnabled: cfg.SPIRE.Enabled,
+		spireControllerAPI: spire.GetControllerAPIClient(&(spireconfig.SpireConfig{
+			SocketPath: cfg.SPIRE.SocketPath,
+		})),
 	}
 
 	tekton.spireControllerAPI.SetConfig((spireconfig.SpireConfig{

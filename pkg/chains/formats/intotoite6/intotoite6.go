@@ -53,10 +53,12 @@ type InTotoIte6 struct {
 func NewFormatter(ctx context.Context, cfg config.Config, logger *zap.SugaredLogger) (formats.Payloader, error) {
 
 	intotoIte6 := &InTotoIte6{
-		builderID:          cfg.Builder.ID,
-		logger:             logger,
-		spireEnabled:       cfg.SPIRE.Enabled,
-		spireControllerAPI: spire.GetControllerAPIClient(ctx),
+		builderID:    cfg.Builder.ID,
+		logger:       logger,
+		spireEnabled: cfg.SPIRE.Enabled,
+		spireControllerAPI: spire.GetControllerAPIClient(&(spireconfig.SpireConfig{
+			SocketPath: cfg.SPIRE.SocketPath,
+		})),
 	}
 
 	intotoIte6.spireControllerAPI.SetConfig((spireconfig.SpireConfig{
