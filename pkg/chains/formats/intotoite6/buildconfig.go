@@ -19,7 +19,6 @@ package intotoite6
 import (
 	"strings"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -30,7 +29,7 @@ type BuildConfig struct {
 }
 
 type RuntimeBuildConfig struct {
-	Processes []tetragon.Process `json:"tetragon.Process"`
+	Processes []string `json:"tetragon.Process"`
 }
 
 // Step corresponds to one step in the TaskRun
@@ -66,12 +65,8 @@ func buildConfig(tr *v1beta1.TaskRun) BuildConfig {
 	return BuildConfig{Steps: steps}
 }
 
-func runtimeBuildConfig(tetragonProcesses []*tetragon.Process) RuntimeBuildConfig {
-	processes := []tetragon.Process{}
-	for _, p := range tetragonProcesses {
-		processes = append(processes, *p)
-	}
-	return RuntimeBuildConfig{Processes: processes}
+func runtimeBuildConfig(tetragonProcesses []string) RuntimeBuildConfig {
+	return RuntimeBuildConfig{Processes: tetragonProcesses}
 }
 
 func container(stepState v1beta1.StepState, tr *v1beta1.TaskRun) v1beta1.Step {

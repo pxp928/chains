@@ -170,12 +170,17 @@ type mockSigner struct {
 	runtime bool
 }
 
-func (m *mockSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []interface{}) error {
+func (m *mockSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []string) error {
 	m.signed = true
 	return nil
 }
 
-func (m *mockSigner) GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) ([]interface{}, error) {
+func (m *mockSigner) CollectTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) []string {
 	m.runtime = true
-	return nil, nil
+	return nil
 }
+
+// func (m *mockSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []string {
+// 	m.runtime = true
+// 	return nil
+// }

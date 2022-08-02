@@ -16,7 +16,7 @@ package formats
 // Payloader is an interface to generate a chains Payload from a TaskRun
 type Payloader interface {
 	CreatePayload(obj interface{}) (interface{}, error)
-	CreateRuntimePayload(obj interface{}, process []interface{}) (interface{}, error)
+	CreateRuntimePayload(obj interface{}, process []string) (interface{}, error)
 	Type() PayloadType
 	Wrap() bool
 }

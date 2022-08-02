@@ -41,7 +41,7 @@ func (i *Tekton) CreatePayload(obj interface{}) (interface{}, error) {
 
 }
 
-func (i *Tekton) CreateRuntimePayload(obj interface{}, process []interface{}) (interface{}, error) {
+func (i *Tekton) CreateRuntimePayload(obj interface{}, process []string) (interface{}, error) {
 	// NEED TO IMPLEMENT
 	return nil, fmt.Errorf("Unimplemented type %s", "Tekton")
 

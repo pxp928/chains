@@ -38,8 +38,9 @@ import (
 )
 
 type Signer interface {
-	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []interface{}) error
-	GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) ([]interface{}, error)
+	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []string) error
+	CollectTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) []string
+	//GetTaskRunEvents(tr *v1beta1.TaskRun) []string
 }
 
 type TaskRunSigner struct {
@@ -112,13 +113,16 @@ func AllFormatters(cfg config.Config, l *zap.SugaredLogger) map[formats.PayloadT
 	return all
 }
 
-// SignTaskRun signs a TaskRun, and marks it as signed.
-func (ts *TaskRunSigner) GetTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) ([]interface{}, error) {
-	return ts.Runtime.GetEvents(ctx, tr)
+func (ts *TaskRunSigner) CollectTaskRunEvents(ctx context.Context, tr *v1beta1.TaskRun) []string {
+	return ts.Runtime.CollectEvents(ctx, tr, ts.Pipelineclientset)
 }
 
+// func (ts *TaskRunSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []string {
+// 	return ts.Runtime.GetEvents(tr)
+// }
+
 // SignTaskRun signs a TaskRun, and marks it as signed.
-func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []interface{}) error {
+func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []string) error {
 	cfg := *config.FromContext(ctx)
 	logger := logging.FromContext(ctx)
 
@@ -161,6 +165,7 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, p
 
 			payload, err := payloader.CreatePayload(obj)
 			var runtimeRawPayload []byte
+			logger.Infof("Inside the signing function runtime Payload %s", processes)
 			if processes != nil {
 				runtimePayload, err = payloader.CreateRuntimePayload(obj, processes)
 				runtimeRawPayload, err = json.Marshal(runtimePayload)
@@ -220,7 +225,7 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, p
 					merr = multierror.Append(merr, err)
 				}
 			}
-
+			logger.Infof("Runtime Payload %s", runtimeRawPayload)
 			if runtimeRawPayload != nil {
 				signature, err := signer.SignMessage(bytes.NewReader(runtimeRawPayload))
 				if err != nil {

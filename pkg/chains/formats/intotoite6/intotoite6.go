@@ -21,7 +21,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
 
 	intoto "github.com/in-toto/in-toto-golang/in_toto"
@@ -69,7 +68,7 @@ func (i *InTotoIte6) CreatePayload(obj interface{}) (interface{}, error) {
 	return i.generateAttestationFromTaskRun(tr)
 }
 
-func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []interface{}) (interface{}, error) {
+func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []string) (interface{}, error) {
 	var tr *v1beta1.TaskRun
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
@@ -80,18 +79,8 @@ func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []interface
 	return i.generateRuntimeAttestationFromTaskRun(tr, processes)
 }
 
-func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, processes []interface{}) (interface{}, error) {
+func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, processes []string) (interface{}, error) {
 	subjects := GetSubjectDigests(tr, i.logger)
-
-	var tetragonProcesses []*tetragon.Process
-	for _, p := range processes {
-		switch v := p.(type) {
-		case *tetragon.Process:
-			tetragonProcesses = append(tetragonProcesses, v)
-		default:
-			return nil, fmt.Errorf("intoto does not support type: %s", v)
-		}
-	}
 
 	att := intoto.ProvenanceStatement{
 		StatementHeader: intoto.StatementHeader{
@@ -105,7 +94,7 @@ func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, 
 			},
 			BuildType:   tektonID,
 			Invocation:  invocation(tr),
-			BuildConfig: runtimeBuildConfig(tetragonProcesses),
+			BuildConfig: runtimeBuildConfig(processes),
 			Metadata:    metadata(tr),
 		},
 	}
