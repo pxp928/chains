@@ -20,12 +20,14 @@ import (
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 // ControllerAPIClient interface maps to the spire controller API to interact with spire
 type RuntimeAPI interface {
-	GetEvents(ctx context.Context, tr *v1beta1.TaskRun) ([]interface{}, error)
-	Close() error
+	CollectEvents(ctx context.Context)
+	Close(conn *grpc.ClientConn) error
+	GetEvents(tr *v1beta1.TaskRun) []string
 }
 
 // InitializeBackends creates and initializes every configured storage backend.

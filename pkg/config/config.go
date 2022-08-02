@@ -141,6 +141,7 @@ type TransparencyConfig struct {
 
 type RuntimeConfig struct {
 	Enabled       bool
+	Namespace     string
 	ServerAddress string
 }
 
@@ -197,6 +198,7 @@ const (
 
 	// Runtime config
 	runtimeEnabledKey = "runtime.enabled"
+	runtimeNamespace  = "runtime.namespace"
 	runtimeServerPath = "runtime.serverPath"
 )
 
@@ -232,6 +234,7 @@ func defaultConfig() *Config {
 		},
 		Runtime: RuntimeConfig{
 			Enabled:       true,
+			Namespace:     "default",
 			ServerAddress: "tetragon.tetragon.svc.cluster.local:54321",
 		},
 	}
@@ -291,6 +294,7 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 
 		// Runtime config
 		asBool(runtimeEnabledKey, &cfg.Runtime.Enabled),
+		asString(runtimeNamespace, &cfg.Runtime.Namespace),
 		asString(runtimeServerPath, &cfg.Runtime.ServerAddress),
 	); err != nil {
 		return nil, fmt.Errorf("failed to parse data: %w", err)

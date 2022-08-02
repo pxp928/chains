@@ -65,6 +65,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 			}
 			tsSigner.Backends = backends
 			tsSigner.Runtime = runtime
+			go runtime.CollectEvents(ctx)
 		})
 
 		// setup watches for the config names provided by client
