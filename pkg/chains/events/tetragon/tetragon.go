@@ -15,7 +15,6 @@ package tetragon
 
 import (
 	"context"
-	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/tektoncd/chains/pkg/config"
@@ -69,17 +68,18 @@ func (t *tetragonAPIClient) GetEvents(ctx context.Context, tr *v1beta1.TaskRun) 
 	t.logger.Infof("Start collecting runtime events for  %s", tr.Name)
 	var processes []interface{}
 	t.client = tetragon.NewFineGuidanceSensorsClient(t.serverConn)
-	stream, err := t.client.GetEvents(ctx, &tetragon.GetEventsRequest{})
+	stream, err := t.client.GetEvents(ctx, &tetragon.GetEventsRequest{
+		AllowList: []*tetragon.Filter{{PodRegex: []string{tr.Name}}},
+	})
 	if err != nil {
 		return nil, err
 	}
-	// Create a timer to cancel
-	stop := time.NewTicker(15 * time.Second)
 	var pod *tetragon.Pod
 	for {
 		t.logger.Info("Reached start of the loop")
-		select {
-		case <-stop.C:
+		// Recieve on the stream
+		res, err := stream.Recv()
+		if err != nil {
 			//Tell the Server to close this Stream, used to clean up running on the server
 			err := stream.CloseSend()
 			if err != nil {
@@ -88,52 +88,46 @@ func (t *tetragonAPIClient) GetEvents(ctx context.Context, tr *v1beta1.TaskRun) 
 			t.logger.Infof("Final list of processes collected %s", processes)
 			t.collected[tr.Name] = processes
 			return processes, nil
-		default:
-			// Recieve on the stream
-			res, err := stream.Recv()
-			if err != nil {
-				return nil, err
+		}
+		switch res.Event.(type) {
+		case *tetragon.GetEventsResponse_ProcessExec:
+			exec := res.GetProcessExec()
+			if exec.Process != nil {
+				pod = exec.Process.GetPod()
+				if pod != nil {
+					if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
+						processes = append(processes, exec.Process)
+					}
+				}
 			}
-			switch res.Event.(type) {
-			case *tetragon.GetEventsResponse_ProcessExec:
-				exec := res.GetProcessExec()
-				if exec.Process != nil {
-					pod = exec.Process.GetPod()
-					if pod != nil {
-						if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
-							processes = append(processes, exec.Process)
-						}
-					}
-				}
 
-			case *tetragon.GetEventsResponse_ProcessExit:
-				exit := res.GetProcessExit()
-				if exit.Process != nil {
-					pod = exit.Process.GetPod()
-					if pod != nil {
-						if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
-							processes = append(processes, exit.Process)
-						}
+		case *tetragon.GetEventsResponse_ProcessExit:
+			exit := res.GetProcessExit()
+			if exit.Process != nil {
+				pod = exit.Process.GetPod()
+				if pod != nil {
+					if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
+						processes = append(processes, exit.Process)
 					}
 				}
-			case *tetragon.GetEventsResponse_ProcessKprobe:
-				kprobe := res.GetProcessKprobe()
-				if kprobe.Process != nil {
-					pod = kprobe.Process.GetPod()
-					if pod != nil {
-						if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
-							processes = append(processes, kprobe.Process)
-						}
+			}
+		case *tetragon.GetEventsResponse_ProcessKprobe:
+			kprobe := res.GetProcessKprobe()
+			if kprobe.Process != nil {
+				pod = kprobe.Process.GetPod()
+				if pod != nil {
+					if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
+						processes = append(processes, kprobe.Process)
 					}
 				}
-			case *tetragon.GetEventsResponse_ProcessTracepoint:
-				tp := res.GetProcessTracepoint()
-				if tp.Process != nil {
-					pod = tp.Process.GetPod()
-					if pod != nil {
-						if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
-							processes = append(processes, *tp.Process)
-						}
+			}
+		case *tetragon.GetEventsResponse_ProcessTracepoint:
+			tp := res.GetProcessTracepoint()
+			if tp.Process != nil {
+				pod = tp.Process.GetPod()
+				if pod != nil {
+					if pod.Name == tr.Status.PodName && pod.Namespace == tr.Namespace {
+						processes = append(processes, *tp.Process)
 					}
 				}
 			}
