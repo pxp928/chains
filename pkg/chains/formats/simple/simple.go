@@ -18,6 +18,7 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/signature/payload"
 	"github.com/tektoncd/chains/pkg/chains/formats"
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 
 	"github.com/google/go-containerregistry/pkg/name"
 )
@@ -40,7 +41,7 @@ func (i *SimpleSigning) CreatePayload(obj interface{}) (interface{}, error) {
 	}
 }
 
-func (i *SimpleSigning) CreateRuntimePayload(obj interface{}, process []string) (interface{}, error) {
+func (i *SimpleSigning) CreateRuntimePayload(obj interface{}, process []*provenance.Process) (interface{}, error) {
 	// NEED TO IMPLEMENT
 	return nil, fmt.Errorf("Unimplemented type %s", "SimpleSigning")
 }

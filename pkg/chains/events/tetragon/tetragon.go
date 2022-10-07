@@ -16,9 +16,9 @@ package tetragon
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
@@ -29,7 +29,7 @@ import (
 type tetragonAPIClient struct {
 	logger    *zap.SugaredLogger
 	cfg       config.Config
-	collected map[string][]string
+	collected map[string][]*provenance.Process
 }
 
 // NewStorageBackend returns a new Tekton StorageBackend that stores signatures on a TaskRun
@@ -37,7 +37,7 @@ func NewEventsBackend(ctx context.Context, logger *zap.SugaredLogger, cfg config
 	return &tetragonAPIClient{
 		logger:    logger,
 		cfg:       cfg,
-		collected: make(map[string][]string),
+		collected: make(map[string][]*provenance.Process),
 	}, nil
 }
 
@@ -53,7 +53,7 @@ func (t *tetragonAPIClient) dial(ctx context.Context) (*grpc.ClientConn, error) 
 	return conn, nil
 }
 
-func (t *tetragonAPIClient) GetEvents(tr *v1beta1.TaskRun) []string {
+func (t *tetragonAPIClient) GetEvents(tr *v1beta1.TaskRun) []*provenance.Process {
 	return t.collected[tr.Status.PodName]
 }
 
@@ -84,11 +84,11 @@ func (t *tetragonAPIClient) CollectEvents(ctx context.Context) {
 			}
 			break
 		}
-		podname, stringProcess, err := eventToString(res)
+		podname, process, err := eventToString(res)
 		if err != nil {
 			t.logger.Error(err)
 		}
-		t.collected[podname] = append(t.collected[podname], stringProcess)
+		t.collected[podname] = append(t.collected[podname], process)
 	}
 }
 
@@ -108,207 +108,228 @@ func (t *tetragonAPIClient) CollectEvents(ctx context.Context) {
 // 	}
 // }
 
-func processCaps(c *tetragon.Capabilities) string {
+func processCaps(c *tetragon.Capabilities) []string {
 	var caps []string
 
 	if c == nil {
-		return ""
+		return nil
 	}
 
 	for e := range c.Effective {
 		caps = append(caps, tetragon.CapabilitiesType_name[int32(e)])
 	}
-
-	capsString := strings.Join(caps, ",")
-	return capsString
-}
-
-func capTrailorPrinter(str string, caps string) string {
-	if len(caps) == 0 {
-		return str
-	}
-	padding := 0
-	if len(str) < 120 {
-		padding = 120 - len(str)
-	}
-	return fmt.Sprintf("%s %*s", str, padding, caps)
+	return caps
 }
 
 func getPodInfo(process *tetragon.Process) string {
 	return fmt.Sprint(process.Pod.Name)
 }
 
-func processInfo(host string, process *tetragon.Process) (string, string) {
-	source := host
-	if process.Pod != nil {
-		source = fmt.Sprint(process.Pod.Namespace, "/", process.Pod.Name)
-	}
-	proc := process.Binary
-	caps := fmt.Sprint(processCaps(process.Cap))
-	return fmt.Sprintf("%s %s", source, proc), caps
-}
-
-func eventToString(response *tetragon.GetEventsResponse) (string, string, error) {
+func eventToString(response *tetragon.GetEventsResponse) (string, *provenance.Process, error) {
+	collectedProcess := &provenance.Process{}
 	switch response.Event.(type) {
 	case *tetragon.GetEventsResponse_ProcessExec:
+
 		exec := response.GetProcessExec()
 		if exec.Process == nil {
-			return "", "", fmt.Errorf("process field is not set")
+			return "", nil, fmt.Errorf("process field is not set")
 		}
-		event := "process"
-
-		processInfo, caps := processInfo(response.NodeName, exec.Process)
-		args := exec.Process.Arguments
-		return getPodInfo(exec.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, args), caps), nil
+		collectedProcess.EventType = "process"
+		collectedProcess.ProcessBinary = exec.Process.Binary
+		collectedProcess.Arguments = []string{exec.Process.Arguments}
+		collectedProcess.Privileged = processCaps(exec.Process.Cap)
+		return getPodInfo(exec.Process), collectedProcess, nil
 	case *tetragon.GetEventsResponse_ProcessExit:
 		exit := response.GetProcessExit()
 		if exit.Process == nil {
-			return "", "", fmt.Errorf("process field is not set")
+			return "", nil, fmt.Errorf("process field is not set")
 		}
-		event := "exit"
-		processInfo, caps := processInfo(response.NodeName, exit.Process)
-		args := exit.Process.Arguments
-		var status string
-		if exit.Signal != "" {
-			status = exit.Signal
-		}
-		return getPodInfo(exit.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, args, status), caps), nil
+		collectedProcess.EventType = "exit"
+		collectedProcess.ProcessBinary = exit.Process.Binary
+		collectedProcess.Arguments = []string{exit.Signal, exit.Process.Arguments}
+		collectedProcess.Privileged = processCaps(exit.Process.Cap)
+		return getPodInfo(exit.Process), collectedProcess, nil
 	case *tetragon.GetEventsResponse_ProcessKprobe:
 		kprobe := response.GetProcessKprobe()
 		if kprobe.Process == nil {
-			return "", "", fmt.Errorf("process field is not set")
+			return "", nil, fmt.Errorf("process field is not set")
 		}
-		processInfo, caps := processInfo(response.NodeName, kprobe.Process)
 		switch kprobe.FunctionName {
 		case "__x64_sys_write":
-			event := "write"
-			file := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_write"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil && kprobe.Args[0].GetFileArg() != nil {
-				file = kprobe.Args[0].GetFileArg().Path
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[0].GetFileArg().Path)
 			}
-			bytes := ""
 			if len(kprobe.Args) > 2 && kprobe.Args[2] != nil {
-				bytes = fmt.Sprint(kprobe.Args[2].GetSizeArg(), " bytes")
+				collectedProcess.Arguments = append(collectedProcess.Arguments, fmt.Sprint(kprobe.Args[2].GetSizeArg(), " bytes"))
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "__x64_sys_read":
-			event := "read"
-			file := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_read"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil && kprobe.Args[0].GetFileArg() != nil {
-				file = kprobe.Args[0].GetFileArg().Path
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[0].GetFileArg().Path)
 			}
-			bytes := ""
 			if len(kprobe.Args) > 2 && kprobe.Args[2] != nil {
-				bytes = fmt.Sprint(kprobe.Args[2].GetSizeArg(), " bytes")
+				collectedProcess.Arguments = append(collectedProcess.Arguments, fmt.Sprint(kprobe.Args[2].GetSizeArg(), " bytes"))
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "fd_install":
-			event := "open"
-			file := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "fd_install"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil && kprobe.Args[1].GetFileArg() != nil {
-				file = kprobe.Args[1].GetFileArg().Path
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[0].GetFileArg().Path)
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, file), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "__x64_sys_close":
-			event := "close"
-			file := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_close"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil && kprobe.Args[0].GetFileArg() != nil {
-				file = kprobe.Args[0].GetFileArg().Path
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[0].GetFileArg().Path)
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, file), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "__x64_sys_mount":
-			event := "mount"
-			src := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_mount"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
-				src = kprobe.Args[0].GetStringArg()
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[0].GetStringArg())
 			}
-			dst := ""
+
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
-				dst = kprobe.Args[1].GetStringArg()
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[1].GetStringArg())
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "__x64_sys_setuid":
-			event := "setuid"
-			uid := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_setuid"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
 				uidInt := kprobe.Args[0].GetIntArg()
-				uid = string(uidInt)
+				collectedProcess.Arguments = append(collectedProcess.Arguments, string(uidInt))
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, uid), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "__x64_sys_clock_settime":
-			event := "clock_settime"
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s", event, processInfo), caps), nil
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_clock_settime"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "__x64_sys_pivot_root":
-			event := "pivot_root"
-			src := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_pivot_root"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
-				src = kprobe.Args[0].GetStringArg()
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[0].GetStringArg())
 			}
-			dst := ""
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
-				dst = kprobe.Args[1].GetStringArg()
+				collectedProcess.Arguments = append(collectedProcess.Arguments, kprobe.Args[1].GetStringArg())
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "proc_exec_connector":
-			event := "proc_exec_connector"
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s", event, processInfo), caps), nil
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "proc_exec_connector"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "__x64_sys_setns":
-			netns := ""
-			event := "setns"
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "__x64_sys_setns"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
-				netns = nsId[kprobe.Args[1].GetIntArg()]
+				collectedProcess.Arguments = append(collectedProcess.Arguments, nsId[kprobe.Args[1].GetIntArg()])
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, netns), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "tcp_connect":
-			event := "connect"
-			sock := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "tcp_connect"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
 				sa := kprobe.Args[0].GetSockArg()
-				sock = fmt.Sprintf("tcp %s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport)
+				collectedProcess.Arguments = append(collectedProcess.Arguments, fmt.Sprintf("tcp %s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport))
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, sock), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "tcp_close":
-			event := "close"
-			sock := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "tcp_close"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
 				sa := kprobe.Args[0].GetSockArg()
-				sock = fmt.Sprintf("tcp %s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport)
+				collectedProcess.Arguments = append(collectedProcess.Arguments, fmt.Sprintf("tcp %s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport))
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, sock), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		case "tcp_sendmsg":
-			event := "sendmsg"
-			args := ""
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "tcp_sendmsg"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
 				sa := kprobe.Args[0].GetSockArg()
-				args = fmt.Sprintf("tcp %s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport)
+				collectedProcess.Arguments = append(collectedProcess.Arguments, fmt.Sprintf("tcp %s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport))
 			}
-			bytes := int32(0)
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
-				bytes = kprobe.Args[1].GetIntArg()
+				collectedProcess.Arguments = append(collectedProcess.Arguments, string(kprobe.Args[1].GetIntArg()))
 			}
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s bytes %d", event, processInfo, args, bytes), caps), nil
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		default:
-			event := "syscall"
-			return getPodInfo(kprobe.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), caps), nil
+			collectedProcess.EventType = "kprobe"
+			collectedProcess.Function = "syscall"
+			collectedProcess.ProcessBinary = kprobe.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(kprobe.Process.Cap)
+			return getPodInfo(kprobe.Process), collectedProcess, nil
 		}
 	case *tetragon.GetEventsResponse_ProcessTracepoint:
 		tp := response.GetProcessTracepoint()
 		if tp.Process == nil {
-			return "", "", fmt.Errorf("process field is not set")
+			return "", nil, fmt.Errorf("process field is not set")
 		}
-		processInfo, caps := processInfo(response.NodeName, tp.Process)
 		switch fmt.Sprintf("%s/%s", tp.Subsys, tp.Event) {
 		case "raw_syscalls/sys_enter":
-			event := "syscall"
-			sysName := "unknown"
-			return getPodInfo(tp.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, sysName), caps), nil
+			collectedProcess.EventType = "tracepoint"
+			collectedProcess.Function = "raw_syscalls/sys_enter"
+			collectedProcess.ProcessBinary = tp.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(tp.Process.Cap)
+			return getPodInfo(tp.Process), collectedProcess, nil
 		default:
-			event := "tracepoint"
-			return getPodInfo(tp.Process), capTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, tp.Subsys, tp.Event), caps), nil
+			collectedProcess.EventType = "tracepoint"
+			collectedProcess.ProcessBinary = tp.Process.Binary
+			collectedProcess.Arguments = []string{}
+			collectedProcess.Privileged = processCaps(tp.Process.Cap)
+			return getPodInfo(tp.Process), collectedProcess, nil
 		}
 	}
 
-	return "", "", fmt.Errorf("unknown event type")
+	return "", nil, fmt.Errorf("unknown event type")
 }
 
 var (

@@ -19,6 +19,7 @@ package intotoite6
 import (
 	"strings"
 
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -29,7 +30,7 @@ type BuildConfig struct {
 }
 
 type RuntimeBuildConfig struct {
-	Processes []string `json:"tetragon.Process"`
+	Processes []provenance.Process `json:"tetragon.Process"`
 }
 
 // Step corresponds to one step in the TaskRun
@@ -65,8 +66,10 @@ func buildConfig(tr *v1beta1.TaskRun) BuildConfig {
 	return BuildConfig{Steps: steps}
 }
 
-func runtimeBuildConfig(tetragonProcesses []string) RuntimeBuildConfig {
-	return RuntimeBuildConfig{Processes: tetragonProcesses}
+func runtimeBuildConfig(tetragonProcesses []*provenance.Process) provenance.RuntimeLog {
+	return provenance.RuntimeLog{
+		Process: tetragonProcesses,
+	}
 }
 
 func container(stepState v1beta1.StepState, tr *v1beta1.TaskRun) v1beta1.Step {

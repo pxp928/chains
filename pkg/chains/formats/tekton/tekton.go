@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/chains/pkg/chains/formats"
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
@@ -41,7 +42,7 @@ func (i *Tekton) CreatePayload(obj interface{}) (interface{}, error) {
 
 }
 
-func (i *Tekton) CreateRuntimePayload(obj interface{}, process []string) (interface{}, error) {
+func (i *Tekton) CreateRuntimePayload(obj interface{}, process []*provenance.Process) (interface{}, error) {
 	// NEED TO IMPLEMENT
 	return nil, fmt.Errorf("Unimplemented type %s", "Tekton")
 

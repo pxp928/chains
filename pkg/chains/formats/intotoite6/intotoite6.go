@@ -26,6 +26,7 @@ import (
 	intoto "github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/tektoncd/chains/pkg/artifacts"
 	"github.com/tektoncd/chains/pkg/chains/formats"
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -68,7 +69,7 @@ func (i *InTotoIte6) CreatePayload(obj interface{}) (interface{}, error) {
 	return i.generateAttestationFromTaskRun(tr)
 }
 
-func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []string) (interface{}, error) {
+func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []*provenance.Process) (interface{}, error) {
 	var tr *v1beta1.TaskRun
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
@@ -79,26 +80,47 @@ func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []string) (
 	return i.generateRuntimeAttestationFromTaskRun(tr, processes)
 }
 
-func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, processes []string) (interface{}, error) {
+func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, processes []*provenance.Process) (interface{}, error) {
 	subjects := GetSubjectDigests(tr, i.logger)
 
-	att := intoto.ProvenanceStatement{
-		StatementHeader: intoto.StatementHeader{
+	att := provenance.RuntimeStatement{
+		StatementHeader: provenance.StatementHeader{
 			Type:          intoto.StatementInTotoV01,
-			PredicateType: slsa.PredicateSLSAProvenance,
+			PredicateType: provenance.PredicateRuntime,
 			Subject:       subjects,
 		},
-		Predicate: slsa.ProvenancePredicate{
-			Builder: slsa.ProvenanceBuilder{
-				ID: i.builderID,
+		Predicate: provenance.RuntimePredicate{
+			Monitor: provenance.RuntimeMonitor{
+				ID: "https://tetragon",
 			},
-			BuildType:   tektonID,
-			Invocation:  invocation(tr),
-			BuildConfig: runtimeBuildConfig(processes),
-			Metadata:    metadata(tr),
+			Build: provenance.RuntimeBuild{
+				BuilderId: i.builderID,
+				Type:      i.builderID,
+				Event:     tr.Name,
+			},
+			Invocation: provenance.ProvenanceInvocation{
+				ConfigSource: provenance.ConfigSource{
+					URI:        "",
+					Digest:     provenance.DigestSet{},
+					EntryPoint: "",
+				},
+			},
+			MonitorLog: runtimeBuildConfig(processes),
+			Metadata:   runtimeMetadata(tr),
 		},
 	}
 	return att, nil
+}
+
+func runtimeMetadata(tr *v1beta1.TaskRun) *provenance.RuntimeMetadata {
+	m := &provenance.RuntimeMetadata{}
+	if tr.Status.StartTime != nil {
+		m.BuildStartedOn = &tr.Status.StartTime.Time
+	}
+	if tr.Status.CompletionTime != nil {
+		m.BuildFinishedOn = &tr.Status.CompletionTime.Time
+	}
+	return m
 }
 
 // generateAttestationFromTaskRun translates a Tekton TaskRun into an in-toto attestation

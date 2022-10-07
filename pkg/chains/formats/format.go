@@ -13,10 +13,12 @@ limitations under the License.
 
 package formats
 
+import "github.com/tektoncd/chains/pkg/chains/provenance"
+
 // Payloader is an interface to generate a chains Payload from a TaskRun
 type Payloader interface {
 	CreatePayload(obj interface{}) (interface{}, error)
-	CreateRuntimePayload(obj interface{}, process []string) (interface{}, error)
+	CreateRuntimePayload(obj interface{}, process []*provenance.Process) (interface{}, error)
 	Type() PayloadType
 	Wrap() bool
 }

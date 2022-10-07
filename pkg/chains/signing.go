@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/chains/pkg/chains/formats/intotoite6"
 	"github.com/tektoncd/chains/pkg/chains/formats/simple"
 	"github.com/tektoncd/chains/pkg/chains/formats/tekton"
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 	"github.com/tektoncd/chains/pkg/chains/signing"
 	"github.com/tektoncd/chains/pkg/chains/signing/kms"
 	"github.com/tektoncd/chains/pkg/chains/signing/x509"
@@ -38,8 +39,8 @@ import (
 )
 
 type Signer interface {
-	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []string) error
-	GetTaskRunEvents(tr *v1beta1.TaskRun) []string
+	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process) error
+	GetTaskRunEvents(tr *v1beta1.TaskRun) []*provenance.Process
 }
 
 type TaskRunSigner struct {
@@ -112,12 +113,12 @@ func AllFormatters(cfg config.Config, l *zap.SugaredLogger) map[formats.PayloadT
 	return all
 }
 
-func (ts *TaskRunSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []string {
+func (ts *TaskRunSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []*provenance.Process {
 	return ts.Runtime.GetEvents(tr)
 }
 
 // SignTaskRun signs a TaskRun, and marks it as signed.
-func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []string) error {
+func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process) error {
 	cfg := *config.FromContext(ctx)
 	logger := logging.FromContext(ctx)
 

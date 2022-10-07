@@ -17,6 +17,7 @@ import (
 	"context"
 
 	"github.com/tektoncd/chains/pkg/chains/events/tetragon"
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
@@ -27,7 +28,7 @@ import (
 type RuntimeAPI interface {
 	CollectEvents(ctx context.Context)
 	Close(conn *grpc.ClientConn) error
-	GetEvents(tr *v1beta1.TaskRun) []string
+	GetEvents(tr *v1beta1.TaskRun) []*provenance.Process
 }
 
 // InitializeBackends creates and initializes every configured storage backend.

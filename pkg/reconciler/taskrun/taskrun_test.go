@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	signing "github.com/tektoncd/chains/pkg/chains"
+	"github.com/tektoncd/chains/pkg/chains/provenance"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
@@ -170,12 +171,12 @@ type mockSigner struct {
 	runtime bool
 }
 
-func (m *mockSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []string) error {
+func (m *mockSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process) error {
 	m.signed = true
 	return nil
 }
 
-func (m *mockSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []string {
+func (m *mockSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []*provenance.Process {
 	m.runtime = true
 	return nil
 }
