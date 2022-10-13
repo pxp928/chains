@@ -29,11 +29,11 @@ type RuntimeAPI interface {
 	CollectEvents(ctx context.Context)
 	Close(conn *grpc.ClientConn) error
 	GetEvents(tr *v1beta1.TaskRun) []*provenance.Process
+	GetTracingPolicies(ctx context.Context) []*provenance.TracePolicy
 }
 
 // InitializeBackends creates and initializes every configured storage backend.
 func InitializeRuntime(ctx context.Context, logger *zap.SugaredLogger, cfg config.Config) (RuntimeAPI, error) {
-
 	tetragon, err := tetragon.NewEventsBackend(ctx, logger, cfg)
 	if err != nil {
 		return nil, err

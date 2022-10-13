@@ -41,9 +41,9 @@ func (i *SimpleSigning) CreatePayload(obj interface{}) (interface{}, error) {
 	}
 }
 
-func (i *SimpleSigning) CreateRuntimePayload(obj interface{}, process []*provenance.Process) (interface{}, error) {
+func (i *SimpleSigning) CreateRuntimePayload(obj interface{}, process []*provenance.Process, policies []*provenance.TracePolicy) (interface{}, error) {
 	// NEED TO IMPLEMENT
-	return nil, fmt.Errorf("Unimplemented type %s", "SimpleSigning")
+	return nil, fmt.Errorf("unimplemented type %s", "SimpleSigning")
 }
 
 func (i *SimpleSigning) Wrap() bool {

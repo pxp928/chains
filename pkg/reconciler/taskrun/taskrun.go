@@ -62,7 +62,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, tr *v1beta1.TaskRun) pkgr
 	}
 	time.Sleep(5 * time.Second)
 	logging.FromContext(ctx).Infof("Current Processes found before going into signtaskrun: %s", r.TaskRunSigner.GetTaskRunEvents(tr))
-	if err := r.TaskRunSigner.SignTaskRun(ctx, tr, r.TaskRunSigner.GetTaskRunEvents(tr)); err != nil {
+	if err := r.TaskRunSigner.SignTaskRun(ctx, tr, r.TaskRunSigner.GetTaskRunEvents(tr), r.TaskRunSigner.GetRuntimePolicies(ctx)); err != nil {
 		return err
 	}
 

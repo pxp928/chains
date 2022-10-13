@@ -69,7 +69,7 @@ func (i *InTotoIte6) CreatePayload(obj interface{}) (interface{}, error) {
 	return i.generateAttestationFromTaskRun(tr)
 }
 
-func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []*provenance.Process) (interface{}, error) {
+func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []*provenance.Process, policies []*provenance.TracePolicy) (interface{}, error) {
 	var tr *v1beta1.TaskRun
 	switch v := obj.(type) {
 	case *v1beta1.TaskRun:
@@ -77,10 +77,10 @@ func (i *InTotoIte6) CreateRuntimePayload(obj interface{}, processes []*provenan
 	default:
 		return nil, fmt.Errorf("intoto does not support type: %s", v)
 	}
-	return i.generateRuntimeAttestationFromTaskRun(tr, processes)
+	return i.generateRuntimeAttestationFromTaskRun(tr, processes, policies)
 }
 
-func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, processes []*provenance.Process) (interface{}, error) {
+func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, processes []*provenance.Process, policies []*provenance.TracePolicy) (interface{}, error) {
 	subjects := GetSubjectDigests(tr, i.logger)
 
 	att := provenance.RuntimeStatement{
@@ -93,9 +93,10 @@ func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, 
 			Monitor: provenance.RuntimeMonitor{
 				ID: "https://tetragon",
 			},
+			MonitorType: "https://tetragon",
 			Build: provenance.RuntimeBuild{
 				BuilderId: i.builderID,
-				Type:      i.builderID,
+				Type:      tektonID,
 				Event:     tr.Name,
 			},
 			Invocation: provenance.ProvenanceInvocation{
@@ -104,6 +105,7 @@ func (i *InTotoIte6) generateRuntimeAttestationFromTaskRun(tr *v1beta1.TaskRun, 
 					Digest:     provenance.DigestSet{},
 					EntryPoint: "",
 				},
+				TracePolicy: runtimePolicy(policies),
 			},
 			MonitorLog: runtimeBuildConfig(processes),
 			Metadata:   runtimeMetadata(tr),

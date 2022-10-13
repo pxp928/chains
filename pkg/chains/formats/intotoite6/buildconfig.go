@@ -66,6 +66,12 @@ func buildConfig(tr *v1beta1.TaskRun) BuildConfig {
 	return BuildConfig{Steps: steps}
 }
 
+func runtimePolicy(policies []*provenance.TracePolicy) provenance.Policies {
+	return provenance.Policies{
+		Policies: policies,
+	}
+}
+
 func runtimeBuildConfig(tetragonProcesses []*provenance.Process) provenance.RuntimeLog {
 	return provenance.RuntimeLog{
 		Process: tetragonProcesses,

@@ -171,12 +171,17 @@ type mockSigner struct {
 	runtime bool
 }
 
-func (m *mockSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process) error {
+func (m *mockSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process, policies []*provenance.TracePolicy) error {
 	m.signed = true
 	return nil
 }
 
 func (m *mockSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []*provenance.Process {
+	m.runtime = true
+	return nil
+}
+
+func (m *mockSigner) GetRuntimePolicies(ctx context.Context) []*provenance.TracePolicy {
 	m.runtime = true
 	return nil
 }

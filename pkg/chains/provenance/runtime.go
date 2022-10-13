@@ -39,8 +39,10 @@ type RuntimeBuild struct {
 type RuntimePredicate struct {
 	Monitor RuntimeMonitor `json:"monitor"`
 
-	// BuildType is a URI indicating what type of build was performed. It determines the meaning of
+	// MonitorType is a URI indicating what type of build was performed. It determines the meaning of
 	// [Invocation], [BuildConfig] and [Materials].
+	MonitorType string `json:"monitorType"`
+
 	Build RuntimeBuild `json:"build"`
 
 	// Invocation identifies the event that kicked off the build. When combined with materials,
@@ -57,7 +59,7 @@ type RuntimePredicate struct {
 
 // ProvenanceRecipe describes the actions performed by the builder.
 type RuntimeLog struct {
-	Process []*Process `json:"steps,omitempty"`
+	Process []*Process `json:"process,omitempty"`
 }
 
 type Process struct {
@@ -74,7 +76,16 @@ type ProvenanceInvocation struct {
 	// ConfigSource describes where the config file that kicked off the build came from. This is
 	// effectively a pointer to the source where [ProvenancePredicate.BuildConfig] came from.
 	ConfigSource ConfigSource `json:"configSource,omitempty"`
-	TracePolicy  interface{}  `json:"parameters,omitempty"`
+	TracePolicy  Policies     `json:"tracePolicy,omitempty"`
+}
+
+type Policies struct {
+	Policies []*TracePolicy `json:"policies,omitempty"`
+}
+
+type TracePolicy struct {
+	Name   string
+	Config string
 }
 
 type ConfigSource struct {

@@ -39,8 +39,9 @@ import (
 )
 
 type Signer interface {
-	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process) error
+	SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process, policies []*provenance.TracePolicy) error
 	GetTaskRunEvents(tr *v1beta1.TaskRun) []*provenance.Process
+	GetRuntimePolicies(ctx context.Context) []*provenance.TracePolicy
 }
 
 type TaskRunSigner struct {
@@ -117,8 +118,12 @@ func (ts *TaskRunSigner) GetTaskRunEvents(tr *v1beta1.TaskRun) []*provenance.Pro
 	return ts.Runtime.GetEvents(tr)
 }
 
+func (ts *TaskRunSigner) GetRuntimePolicies(ctx context.Context) []*provenance.TracePolicy {
+	return ts.Runtime.GetTracingPolicies(ctx)
+}
+
 // SignTaskRun signs a TaskRun, and marks it as signed.
-func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process) error {
+func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, processes []*provenance.Process, policies []*provenance.TracePolicy) error {
 	cfg := *config.FromContext(ctx)
 	logger := logging.FromContext(ctx)
 
@@ -163,7 +168,7 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun, p
 			var runtimeRawPayload []byte
 			logger.Infof("Inside the signing function runtime Payload %s", processes)
 			if processes != nil {
-				runtimePayload, err = payloader.CreateRuntimePayload(obj, processes)
+				runtimePayload, err = payloader.CreateRuntimePayload(obj, processes, policies)
 				runtimeRawPayload, err = json.Marshal(runtimePayload)
 				if err != nil {
 					logger.Warnf("Unable to marshal payload: %v", obj)

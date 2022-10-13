@@ -30,6 +30,7 @@ type tetragonAPIClient struct {
 	logger    *zap.SugaredLogger
 	cfg       config.Config
 	collected map[string][]*provenance.Process
+	client    tetragon.FineGuidanceSensorsClient
 }
 
 // NewStorageBackend returns a new Tekton StorageBackend that stores signatures on a TaskRun
@@ -53,20 +54,53 @@ func (t *tetragonAPIClient) dial(ctx context.Context) (*grpc.ClientConn, error) 
 	return conn, nil
 }
 
+func (t *tetragonAPIClient) GetTracingPolicies(ctx context.Context) []*provenance.TracePolicy {
+	sensors, err := t.client.ListSensors(ctx, &tetragon.ListSensorsRequest{})
+	if err != nil {
+		t.logger.Fatal("error on retrieving sensors: ", err.Error())
+		return nil
+	} else if sensors == nil {
+		t.logger.Fatal("error: sensors is nil\n")
+		return nil
+	}
+
+	tracePolicies := []*provenance.TracePolicy{}
+	for _, sensor := range sensors.Sensors {
+		foundPolicy := provenance.TracePolicy{}
+		if sensor.Enabled {
+			foundPolicy.Name = sensor.Name
+			req := tetragon.GetSensorConfigRequest{Name: sensor.Name}
+			res, err := t.client.GetSensorConfig(ctx, &req)
+			t.logger.Infof("Sensor Response: %s", res.String())
+			if err == nil {
+				foundPolicy.Name = sensor.Name
+				foundPolicy.Config = res.Cfgval
+				tracePolicies = append(tracePolicies, &foundPolicy)
+			} else {
+				t.logger.Fatal("error getting config value for %s: %s\n", sensor, err)
+			}
+		}
+	}
+	return tracePolicies
+}
+
 func (t *tetragonAPIClient) GetEvents(tr *v1beta1.TaskRun) []*provenance.Process {
-	return t.collected[tr.Status.PodName]
+	foundProcess := t.collected[tr.Status.PodName]
+	//t.collected = map[string][]*provenance.Process{}
+	return foundProcess
 }
 
 func (t *tetragonAPIClient) CollectEvents(ctx context.Context) {
 
 	conn, err := t.dial(ctx)
 	if err != nil {
-		t.logger.Fatal("Error on receiving events: ", err.Error())
+		t.logger.Fatal("error on receiving events: ", err.Error())
 	}
 
 	t.logger.Info("Start collecting runtime events")
 
 	client := tetragon.NewFineGuidanceSensorsClient(conn)
+	t.client = client
 	stream, err := client.GetEvents(ctx, &tetragon.GetEventsRequest{
 		AllowList: []*tetragon.Filter{{Namespace: []string{t.cfg.Runtime.Namespace}}}})
 	if err != nil {
