@@ -160,10 +160,37 @@ message KprobeCred {
     repeated CapabilitiesType inheritable = 3;
 }
 
+message KprobeCapability {
+	google.protobuf.Int32Value value = 1;
+	string name = 2;
+}
+
+message KprobeUserNamespace {
+	google.protobuf.Int32Value level = 1;
+	google.protobuf.UInt32Value owner = 2;
+	google.protobuf.UInt32Value group = 3;
+	Namespace ns = 4;
+}
+
 message KprobeBpfAttr {
     string  ProgType = 1;
     uint32  InsnCnt = 2;
     string  ProgName = 3;
+}
+
+message KprobePerfEvent {
+    string	KprobeFunc = 1;
+    string	Type = 2;
+    uint64	Config = 3;
+    uint64	ProbeOffset = 4;
+}
+
+message KprobeBpfMap {
+    string  MapType = 1;
+    uint32  KeySize = 2;
+    uint32  ValueSize = 3;
+    uint32  MaxEntries = 4;
+    string  MapName = 5;
 }
 
 message KprobeArgument {
@@ -180,6 +207,11 @@ message KprobeArgument {
 	KprobeCred cred_arg = 10;
 	int64 long_arg = 11;
 	KprobeBpfAttr bpf_attr_arg = 12;
+	KprobePerfEvent perf_event_arg = 13;
+	KprobeBpfMap bpf_map_arg = 14;
+	uint32 uint_arg = 15;
+	KprobeUserNamespace user_namespace_arg = 16;
+	KprobeCapability capability_arg = 17;
     }
 }
 
@@ -191,6 +223,8 @@ enum KprobeAction {
 	KPROBE_ACTION_UNFOLLOWFD = 4;
 	KPROBE_ACTION_OVERRIDE   = 5;
 	KPROBE_ACTION_COPYFD     = 6;
+    KPROBE_ACTION_GETURL     = 7;
+    KPROBE_ACTION_DNSLOOKUP  = 8;
 }
 
 message ProcessKprobe {

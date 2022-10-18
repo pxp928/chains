@@ -69,12 +69,11 @@ func (t *tetragonAPIClient) GetTracingPolicies(ctx context.Context) []*provenanc
 		foundPolicy := provenance.TracePolicy{}
 		if sensor.Enabled {
 			foundPolicy.Name = sensor.Name
-			req := tetragon.GetSensorConfigRequest{Name: sensor.Name}
-			res, err := t.client.GetSensorConfig(ctx, &req)
-			t.logger.Infof("Sensor Response: %s", res.String())
+			req := tetragon.PrintSensorStateRequest{Name: sensor.Name}
+			res, err := t.client.PrintSensorState(ctx, &req)
 			if err == nil {
 				foundPolicy.Name = sensor.Name
-				foundPolicy.Config = res.Cfgval
+				foundPolicy.Config = res.State
 				tracePolicies = append(tracePolicies, &foundPolicy)
 			} else {
 				t.logger.Fatal("error getting config value for %s: %s\n", sensor, err)

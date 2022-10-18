@@ -341,7 +341,7 @@ github.com/chrismellard/docker-credential-acr-env/pkg/credhelper
 github.com/chrismellard/docker-credential-acr-env/pkg/registry
 github.com/chrismellard/docker-credential-acr-env/pkg/token
 # github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000 => ../tetragon/api
-## explicit; go 1.17
+## explicit; go 1.18
 github.com/cilium/tetragon/api/v1/tetragon
 # github.com/cloudevents/sdk-go/v2 v2.5.0
 ## explicit; go 1.14
@@ -2126,7 +2126,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
+# golang.org/x/sys v0.0.0-20220829200755-d48e67d00261
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs

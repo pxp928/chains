@@ -31,6 +31,7 @@ type FineGuidanceSensorsClient interface {
 	DisableSensor(ctx context.Context, in *DisableSensorRequest, opts ...grpc.CallOption) (*DisableSensorResponse, error)
 	SetSensorConfig(ctx context.Context, in *SetSensorConfigRequest, opts ...grpc.CallOption) (*SetSensorConfigResponse, error)
 	GetSensorConfig(ctx context.Context, in *GetSensorConfigRequest, opts ...grpc.CallOption) (*GetSensorConfigResponse, error)
+	PrintSensorState(ctx context.Context, in *PrintSensorStateRequest, opts ...grpc.CallOption) (*PrintSensorStateResponse, error)
 	GetStackTraceTree(ctx context.Context, in *GetStackTraceTreeRequest, opts ...grpc.CallOption) (*GetStackTraceTreeResponse, error)
 	GetVersion(ctx context.Context, in *GetVersionRequest, opts ...grpc.CallOption) (*GetVersionResponse, error)
 }
@@ -147,6 +148,15 @@ func (c *fineGuidanceSensorsClient) GetSensorConfig(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *fineGuidanceSensorsClient) PrintSensorState(ctx context.Context, in *PrintSensorStateRequest, opts ...grpc.CallOption) (*PrintSensorStateResponse, error) {
+	out := new(PrintSensorStateResponse)
+	err := c.cc.Invoke(ctx, "/tetragon.FineGuidanceSensors/PrintSensorState", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *fineGuidanceSensorsClient) GetStackTraceTree(ctx context.Context, in *GetStackTraceTreeRequest, opts ...grpc.CallOption) (*GetStackTraceTreeResponse, error) {
 	out := new(GetStackTraceTreeResponse)
 	err := c.cc.Invoke(ctx, "/tetragon.FineGuidanceSensors/GetStackTraceTree", in, out, opts...)
@@ -178,6 +188,7 @@ type FineGuidanceSensorsServer interface {
 	DisableSensor(context.Context, *DisableSensorRequest) (*DisableSensorResponse, error)
 	SetSensorConfig(context.Context, *SetSensorConfigRequest) (*SetSensorConfigResponse, error)
 	GetSensorConfig(context.Context, *GetSensorConfigRequest) (*GetSensorConfigResponse, error)
+	PrintSensorState(context.Context, *PrintSensorStateRequest) (*PrintSensorStateResponse, error)
 	GetStackTraceTree(context.Context, *GetStackTraceTreeRequest) (*GetStackTraceTreeResponse, error)
 	GetVersion(context.Context, *GetVersionRequest) (*GetVersionResponse, error)
 }
@@ -212,6 +223,9 @@ func (UnimplementedFineGuidanceSensorsServer) SetSensorConfig(context.Context, *
 }
 func (UnimplementedFineGuidanceSensorsServer) GetSensorConfig(context.Context, *GetSensorConfigRequest) (*GetSensorConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSensorConfig not implemented")
+}
+func (UnimplementedFineGuidanceSensorsServer) PrintSensorState(context.Context, *PrintSensorStateRequest) (*PrintSensorStateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PrintSensorState not implemented")
 }
 func (UnimplementedFineGuidanceSensorsServer) GetStackTraceTree(context.Context, *GetStackTraceTreeRequest) (*GetStackTraceTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStackTraceTree not implemented")
@@ -396,6 +410,24 @@ func _FineGuidanceSensors_GetSensorConfig_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FineGuidanceSensors_PrintSensorState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrintSensorStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FineGuidanceSensorsServer).PrintSensorState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tetragon.FineGuidanceSensors/PrintSensorState",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FineGuidanceSensorsServer).PrintSensorState(ctx, req.(*PrintSensorStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _FineGuidanceSensors_GetStackTraceTree_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetStackTraceTreeRequest)
 	if err := dec(in); err != nil {
@@ -470,6 +502,10 @@ var FineGuidanceSensors_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSensorConfig",
 			Handler:    _FineGuidanceSensors_GetSensorConfig_Handler,
+		},
+		{
+			MethodName: "PrintSensorState",
+			Handler:    _FineGuidanceSensors_PrintSensorState_Handler,
 		},
 		{
 			MethodName: "GetStackTraceTree",

@@ -77,6 +77,14 @@ message GetSensorConfigResponse {
 	string cfgval = 1;
 }
 
+message PrintSensorStateRequest {
+	string name = 1;
+}
+
+message PrintSensorStateResponse {
+	string state = 1;
+}
+
 message DisableSensorResponse { }
 
 message GetStackTraceTreeRequest {
@@ -104,6 +112,7 @@ service FineGuidanceSensors {
     rpc DisableSensor(DisableSensorRequest) returns (DisableSensorResponse) {}
     rpc SetSensorConfig(SetSensorConfigRequest) returns (SetSensorConfigResponse) {}
     rpc GetSensorConfig(GetSensorConfigRequest) returns (GetSensorConfigResponse) {}
+	rpc PrintSensorState(PrintSensorStateRequest) returns (PrintSensorStateResponse) {}
 
     rpc GetStackTraceTree(GetStackTraceTreeRequest) returns (GetStackTraceTreeResponse) {}
 
